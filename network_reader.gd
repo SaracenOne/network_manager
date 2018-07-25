@@ -57,7 +57,7 @@ func get_vector2():
 	return Vector2(get_float(), get_float())
 	
 func get_vector3():
-	return Vector2(get_float(), get_float(), get_float())
+	return Vector3(get_float(), get_float(), get_float())
 	
 func get_rect2():
 	return Rect2(get_float(), get_float(), get_float(), get_float())
@@ -65,7 +65,7 @@ func get_rect2():
 func get_quat():
 	return Quat(get_float(), get_float(), get_float(), get_float())
 	
-func put_basis():
+func get_basis():
 	return Basis(get_vector3(), get_vector3(), get_vector3())
 	
 func put_transform():
