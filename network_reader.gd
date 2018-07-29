@@ -68,7 +68,7 @@ func get_quat():
 func get_basis():
 	return Basis(get_vector3(), get_vector3(), get_vector3())
 	
-func put_transform():
+func get_transform():
 	return Transform(get_basis(), get_vector3())
 	
 func get_entity_id():
