@@ -1,8 +1,8 @@
 extends Node
 tool
 
-const SERVER_PEER_ID = 1
-const PEER_PENDING_TIMEOUT = 20
+const SERVER_PEER_ID : int = 1
+const PEER_PENDING_TIMEOUT : int = 20
 
 enum validation_state_enum {
 	VALIDATION_STATE_NONE,

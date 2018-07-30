@@ -100,27 +100,27 @@ func add_entity_instance(p_instance : Node) -> Node:
 	
 	return p_instance
 	
-func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager.SERVER_PEER_ID) -> Node:
+func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
 	var instance = p_packed_scene.instance()
 	instance.set_name(p_name)
 	instance.set_network_master(p_master_id)
 	
 	return instance
 	
-func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager.SERVER_PEER_ID) -> Node:
+func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
 	var instance = create_entity_instance(p_packed_scene, p_name, p_master_id)
 	instance = add_entity_instance(instance)
 	return instance
 		
 	
-func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager.SERVER_PEER_ID, p_transform : Transform = Transform()) -> Node:
+func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID, p_transform : Transform = Transform()) -> Node:
 	var instance = instantiate_entity(p_packed_scene, p_name, p_master_id)
 	if instance:
 		instance.set_global_transform(p_transform)
 	
 	return instance
 	
-func instantiate_entity_replicated(p_scene_id : int, p_instance_id : int, p_name : String = "Entity", p_master_id : int = network_manager.SERVER_PEER_ID, p_transform : Transform = Transform()) -> void:
+func instantiate_entity_replicated(p_scene_id : int, p_instance_id : int, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID, p_transform : Transform = Transform()) -> void:
 	pass
 	
 func get_next_network_id() -> int:
