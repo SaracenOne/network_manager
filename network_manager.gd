@@ -20,7 +20,6 @@ var network_protocol_version_minor : int = 1
 # Server
 var entity_root_node_path : NodePath = NodePath()
 var server_dedicated : bool = false
-var port : int = -1
 var max_players : int  = -1
 var peer_server_data : Dictionary = {}
 
@@ -28,7 +27,6 @@ var peer_server_data : Dictionary = {}
 var private_encryption_key : String = ""
 var client_state : int = VALIDATION_STATE_NONE
 
-var current_peer_id : int = -1
 var peers : Array = []
 
 # Universal Plug-and-Play
@@ -77,11 +75,11 @@ func _server_disconnected() -> void:
 func _network_peer_packet(p_id : int, p_packet : PoolByteArray) -> void:
 	emit_signal("network_peer_packet", p_id, p_packet)
 
-func has_peer() -> bool:
-	return get_tree().multiplayer.has_network_peer()
+func has_active_peer() -> bool:
+	return get_tree().multiplayer.has_network_peer() and get_tree().multiplayer.network_peer.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED
 	
 func is_server() -> bool:
-	return has_peer() == false or get_tree().multiplayer.is_network_server()
+	return has_active_peer() == false or get_tree().multiplayer.is_network_server()
 	
 func is_rpc_sender_id_server() -> bool:
 	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_PEER_ID
@@ -98,24 +96,22 @@ func set_up_upnp() -> void:
 	return
 
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
-	if get_tree().multiplayer.has_network_peer():
+	if has_active_peer():
 		printerr("Network peer already established")
 		return false
 	
-	current_peer_id = SERVER_PEER_ID
-	port = p_port
 	server_dedicated = p_dedicated
 	max_players = p_max_players
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
-	if (net.create_server(port, max_players) != OK):
-		print("Cannot create a server on port " + str(port) + "!")
+	if (net.create_server(p_port, max_players) != OK):
+		print("Cannot create a server on port " + str(p_port) + "!")
 		return false
 		
 	get_tree().multiplayer.set_network_peer(net)
 	
 	if server_dedicated:
-		print("Server hosted on port " + str(port) + ".")
+		print("Server hosted on port " + str(p_port) + ".")
 		print("Max clients: " + str(max_players))
 	
 	emit_signal("game_hosted")
@@ -123,7 +119,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	return true
 	
 func join_game(p_ip : String, p_port : int) -> bool:
-	if get_tree().multiplayer.has_network_peer():
+	if has_active_peer():
 		printerr("Network peer already established!")
 		return false
 	
@@ -143,10 +139,16 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	return true
 	
 func close_connection() -> void:
-	if get_tree().multiplayer.has_network_peer():
+	if has_active_peer():
 		var net : NetworkedMultiplayerPeer = get_tree().multiplayer.get_network_peer()
 		net.close_connection()
-		get_tree().set_network_peer(null)
+
+func get_current_peer_id() -> int:
+	if has_active_peer():
+		var id = get_tree().multiplayer.get_network_unique_id()
+		return id
+	else:
+		return SERVER_PEER_ID
 
 func get_peer_list() -> Array:
 	return peers
@@ -208,12 +210,16 @@ slave func peer_registration_complete() -> void:
 	
 # Test to see if the peer with this id is connected
 func peer_is_connected(p_id : int) -> bool:
-	var connected_peers : PoolIntArray = get_tree().multiplayer.get_network_connected_peers()
+	var connected_peers : PoolIntArray = get_connected_peers()
 	for i in range(0, connected_peers.size()):
 		connected_peers[i] == p_id
 		return true
 		
 	return false
+	
+func get_connected_peers() -> PoolIntArray:
+	var connected_peers : PoolIntArray = get_tree().multiplayer.get_network_connected_peers()
+	return connected_peers
 	
 func get_synced_peers() -> Array:
 	var valid_peers : Array = []
