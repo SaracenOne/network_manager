@@ -195,12 +195,28 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 		
 			
 func get_network_scene_id_from_path(p_path : String) -> int:
-	var network_scene_id : int = networked_scenes.find(p_path)
+	var path : String = p_path
 	
-	if network_scene_id == -1:
-		ErrorManager.fatal_error("Could not find network scene id for " + p_path)
-	
-	return network_scene_id
+	while(1):
+		var network_scene_id : int = networked_scenes.find(path)
+		
+		# If a valid packed scene was not found, try next to search for it via its inheritance chain
+		if network_scene_id == -1:
+			if ResourceLoader.has(path):
+				var packed_scene : PackedScene = ResourceLoader.load(path)
+				if packed_scene:
+					var scene_state : SceneState = packed_scene.get_state()
+					if scene_state.get_node_count() > 0:
+						var sub_packed_scene : PackedScene = scene_state.get_node_instance(0)
+						if sub_packed_scene:
+							path = sub_packed_scene.resource_path
+							continue
+			break
+		else:
+			return network_scene_id
+		
+	ErrorManager.fatal_error("Could not find network scene id for " + path)
+	return -1
 	
 func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
