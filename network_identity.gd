@@ -20,8 +20,8 @@ signal network_update_complete(p_identity)
 """         
 Network Instance ID
 """
-var network_instance_id : int = -1 setget set_network_instance_id
-var network_scene_id : int= -1 setget set_network_scene_id
+var network_instance_id : int = network_replication_manager_const.NULL_NETWORK_INSTANCE_ID setget set_network_instance_id
+var network_scene_id : int = -1 setget set_network_scene_id
 
 func is_network_manager_valid():
 	if network_manager != null and network_replication_manager != null:
@@ -31,7 +31,7 @@ func is_network_manager_valid():
 
 func set_network_instance_id(p_id : int) -> void:
 	if !Engine.is_editor_hint() and is_network_manager_valid():
-		if network_instance_id == -1:
+		if network_instance_id == network_replication_manager_const.NULL_NETWORK_INSTANCE_ID:
 			network_instance_id = p_id
 			network_replication_manager.register_network_instance_id(network_instance_id, self)
 		else:
@@ -49,11 +49,11 @@ func on_exit() -> void:
 		network_replication_manager.unregister_network_instance_id(network_instance_id)
 	
 func get_state(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	p_writer = entity_node.network_logic_node.on_serialize(p_writer, p_initial_state)
+	p_writer = _entity_node.network_logic_node.on_serialize(p_writer, p_initial_state)
 	return p_writer
 	
 func update_state(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
-	p_reader = entity_node.network_logic_node.on_deserialize(p_reader, p_initial_state)
+	p_reader = _entity_node.network_logic_node.on_deserialize(p_reader, p_initial_state)
 	return p_reader
 	
 func _ready() -> void:
@@ -69,7 +69,7 @@ func _ready() -> void:
 			if network_manager.is_server():
 				set_network_instance_id(network_replication_manager.get_next_network_id())
 				
-			set_network_scene_id(network_replication_manager.get_network_scene_id_from_path(entity_node.filename))
+			set_network_scene_id(network_replication_manager.get_network_scene_id_from_path(_entity_node.filename))
 			
-			entity_node.add_to_group("NetworkedEntities")
-			entity_node.connect("tree_exited", self, "on_exit")
+			_entity_node.add_to_group("NetworkedEntities")
+			_entity_node.connect("tree_exited", self, "on_exit")

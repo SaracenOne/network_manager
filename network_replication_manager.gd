@@ -21,6 +21,14 @@ enum {
 	DESTROY_ENTITY_COMMAND,
 }
 
+""" Network ids """
+
+const NULL_NETWORK_INSTANCE_ID = 0
+const FIRST_NETWORK_INSTANCE_ID = 1
+
+var next_network_instance_id : int = FIRST_NETWORK_INSTANCE_ID
+var network_instance_ids : Dictionary = {}
+
 static func write_entity_scene_id(p_entity : entity_const, p_networked_scenes : Array, p_writer : network_writer_const) -> network_writer_const:
 	if p_networked_scenes.size() > 0xff:
 		p_writer.put_u16(p_entity.network_identity_node.network_scene_id)
@@ -49,6 +57,17 @@ static func write_entity_instance_id(p_entity : entity_const, p_writer : network
 	return p_writer
 	
 static func read_entity_instance_id(p_reader : network_reader_const) -> int:
+	return p_reader.get_u32()
+	
+static func write_entity_parent_id(p_entity : entity_const, p_writer : network_writer_const) -> network_writer_const:
+	if p_entity.entity_parent:
+		p_writer.put_u32(p_entity.entity_parent.network_identity_node.network_instance_id)
+	else:
+		p_writer.put_u32(NULL_NETWORK_INSTANCE_ID)
+		
+	return p_writer
+	
+static func read_entity_parent_id(p_reader : network_reader_const) -> int:
 	return p_reader.get_u32()
 		
 static func write_entity_network_master(p_entity : entity_const, p_writer : network_writer_const) -> network_writer_const:
@@ -82,21 +101,19 @@ func _entity_removed(p_entity : entity_const) -> void:
 			else:
 				network_entities_pending_destruction.append(p_entity)
 
-""" Network ids """
-
-var next_network_instance_id : int = 0
-var network_instance_ids : Dictionary = {}
-
 func reset_server_instances() -> void:
 	network_instance_ids = {}
-	next_network_instance_id = 0 # Reset the network id counter
+	next_network_instance_id = FIRST_NETWORK_INSTANCE_ID # Reset the network id counter
 
 """
 
 """
 
-func add_entity_instance(p_instance : Node) -> Node:
-	get_tree().get_root().add_child(p_instance)
+func add_entity_instance(p_instance : Node, p_parent : Node = null) -> Node:
+	if p_parent:
+		p_parent.add_child(p_instance)
+	else:
+		get_tree().get_root().add_child(p_instance)
 	
 	return p_instance
 	
@@ -135,9 +152,9 @@ func register_network_instance_id(p_network_instance_id : int, p_node : Node) ->
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
 	network_instance_ids.erase(p_network_instance_id)
 	
-func get_instance_network_instance_id(p_network_instance_id : int):
+func get_network_instance_identity(p_network_instance_id : int) -> Node:
 	if network_instance_ids.has(p_network_instance_id):
-		return network_instance_ids[p_network_instance_id] 
+		return network_instance_ids[p_network_instance_id]
 	
 	return null
 	
@@ -152,6 +169,7 @@ func create_entity_spawn_command(p_entity : entity_const) -> network_writer_cons
 
 	network_writer = write_entity_scene_id(p_entity, networked_scenes, network_writer)
 	network_writer = write_entity_instance_id(p_entity, network_writer)
+	network_writer = write_entity_parent_id(p_entity, network_writer)
 	network_writer = write_entity_network_master(p_entity, network_writer)
 	
 	var entity_state = p_entity.network_identity_node.get_state(network_writer_const.new(), true)
@@ -202,7 +220,7 @@ func get_network_scene_id_from_path(p_path : String) -> int:
 		
 		# If a valid packed scene was not found, try next to search for it via its inheritance chain
 		if network_scene_id == -1:
-			if ResourceLoader.has(path):
+			if ResourceLoader.exists(path):
 				var packed_scene : PackedScene = ResourceLoader.load(path)
 				if packed_scene:
 					var scene_state : SceneState = packed_scene.get_state()
@@ -287,23 +305,44 @@ func get_packed_scene_for_scene_id(p_scene_id : int) -> PackedScene:
 
 func decode_entity_spawn_command(p_network_reader : network_reader_const) -> network_reader_const:
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	var scene_id = read_entity_scene_id(p_network_reader, networked_scenes)
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	var instance_id = read_entity_instance_id(p_network_reader)
+	if instance_id <= NULL_NETWORK_INSTANCE_ID:
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
+	var parent_id = read_entity_parent_id(p_network_reader)
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	var network_master = read_entity_network_master(p_network_reader)
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	
 	var packed_scene : PackedScene = get_packed_scene_for_scene_id(scene_id)
 	var instance : entity_const = packed_scene.instance()
+	
+	# If this entity has a parent, try to find it
+	var parent_instance = null
+	if parent_id > NULL_NETWORK_INSTANCE_ID:
+		var network_identity = get_network_instance_identity(parent_id)
+		if network_identity:
+			parent_instance = network_identity.get_entity_node()
+		else:
+			ErrorManager.error("decode_entity_spawn_command: could not find parent entity!")
+	
 	instance.set_name("Entity")
 	instance.set_network_master(network_master)
 	
-	add_entity_instance(instance)
+	add_entity_instance(instance, parent_instance)
 	instance.network_identity_node.set_network_instance_id(instance_id)
 	instance.network_identity_node.update_state(p_network_reader, true)
 	
@@ -334,8 +373,8 @@ func decode_entity_destroy_command(p_network_reader : network_reader_const) -> n
 	
 	if network_instance_ids.has(instance_id):
 		var instance = network_instance_ids[instance_id]
-		instance.entity_node.queue_free()
-		instance.entity_node.get_parent().remove_child(instance.entity_node)
+		instance.get_entity_node().queue_free()
+		instance.get_entity_node().get_parent().remove_child(instance.get_entity_node())
 	else:
 		ErrorManager.fatal_error("Attempted to destroy invalid node")
 	
