@@ -56,6 +56,14 @@ func update_state(p_reader : network_reader_const, p_initial_state : bool) -> ne
 	p_reader = _entity_node.network_logic_node.on_deserialize(p_reader, p_initial_state)
 	return p_reader
 	
+func get_network_root_node():
+	if network_replication_manager:
+		network_replication_manager.get_entity_root_node()
+	
+func send_parent_entity_update():
+	if network_replication_manager:
+		network_replication_manager.send_parent_entity_update(get_entity_node())
+	
 func _ready() -> void:
 	if !Engine.is_editor_hint():
 		if has_node("/root/NetworkManager"):

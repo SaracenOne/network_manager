@@ -19,6 +19,7 @@ enum {
 	SPAWN_ENTITY_COMMAND = 0,
 	UPDATE_ENTITY_COMMAND,
 	DESTROY_ENTITY_COMMAND,
+	SET_PARENT_ENTITY_COMMAND,
 }
 
 """ Network ids """
@@ -82,6 +83,7 @@ signal spawn_state_for_new_client_ready(p_network_id, p_network_writer)
 
 # Server-only
 var network_entities_pending_spawn : Array = []
+var network_entities_pending_reparenting : Array = []
 var network_entities_pending_destruction : Array = []
 
 func _entity_added(p_entity : entity_const) -> void:
@@ -109,13 +111,43 @@ func reset_server_instances() -> void:
 
 """
 
+func get_entity_root_node() -> Node:
+	return get_tree().get_root()
+
+func send_parent_entity_update(p_instance : Node) -> void:
+	if network_manager.is_server():
+		if p_instance.network_identity_node != null:
+			if network_entities_pending_reparenting.has(p_instance) == false:
+				network_entities_pending_reparenting.append(p_instance)
+
 func add_entity_instance(p_instance : Node, p_parent : Node = null) -> Node:
 	if p_parent:
 		p_parent.add_child(p_instance)
 	else:
-		get_tree().get_root().add_child(p_instance)
+		get_entity_root_node().add_child(p_instance)
 	
 	return p_instance
+	
+func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> bool:
+	if !p_instance.is_inside_tree():
+		ErrorManager.error("reparent_entity_instance: entity not inside tree!")
+		return false
+		
+	var last_global_transform = Transform()
+	if p_instance.logic_node:
+		last_global_transform = p_instance.logic_node.get_global_transform()
+		
+	p_instance.get_parent().remove_child(p_instance)
+	
+	if p_parent:
+		p_parent.add_child(p_instance)
+	else:
+		get_entity_root_node().add_child(p_instance)
+		
+	if p_instance.logic_node:
+		p_instance.logic_node.set_global_transform(last_global_transform)
+	
+	return true
 	
 func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
 	var instance = p_packed_scene.instance()
@@ -194,6 +226,14 @@ func create_entity_destroy_command(p_entity : entity_const) -> network_writer_co
 
 	return network_writer
 	
+func create_set_parent_entity_command_command(p_entity : entity_const) -> network_writer_const:
+	var network_writer : network_writer_const = network_writer_const.new()
+
+	network_writer = write_entity_instance_id(p_entity, network_writer)
+	network_writer = write_entity_parent_id(p_entity, network_writer)
+
+	return network_writer
+	
 func create_entity_command(p_command : int, p_entity : entity_const) -> network_writer_const:
 	var network_writer : network_writer_const = network_writer_const.new()
 	match p_command:
@@ -206,6 +246,9 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 		DESTROY_ENTITY_COMMAND:
 			network_writer.put_u8(DESTROY_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_destroy_command(p_entity))
+		SET_PARENT_ENTITY_COMMAND:
+			network_writer.put_u8(SET_PARENT_ENTITY_COMMAND)
+			network_writer.put_writer(create_set_parent_entity_command_command(p_entity))
 		_:
 			ErrorManager.fatal_error("Unknown entity message")
 
@@ -255,15 +298,22 @@ func _network_manager_process(p_delta : float) -> void:
 	for entity in network_entities_pending_spawn:
 		entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
 		
+	# Reparent commands
+	var entity_reparent_writers : Array = []
+	for entity in network_entities_pending_reparenting:
+		entity_reparent_writers.append(create_entity_command(SET_PARENT_ENTITY_COMMAND, entity))
+		
 	# Destroy commands
 	var entity_destroy_writers : Array = []
 	for entity in network_entities_pending_destruction:
 		entity_destroy_writers.append(create_entity_command(DESTROY_ENTITY_COMMAND, entity))
 		
-	# Put Spawn and destroy commands into the reliable channel
+	# Put spawn, reparent, and destroy commands into the reliable channel
 	var reliable_network_writer = network_writer_const.new()
 	for entity_spawn_writer in entity_spawn_writers:
 		reliable_network_writer.put_writer(entity_spawn_writer)
+	for entity_reparent_writer in entity_reparent_writers:
+		reliable_network_writer.put_writer(entity_reparent_writer)
 	for entity_destroy_writer in entity_destroy_writers:
 		reliable_network_writer.put_writer(entity_destroy_writer)
 	
@@ -279,8 +329,9 @@ func _network_manager_process(p_delta : float) -> void:
 	for entity_update_writer in entity_update_writers:
 		unreliable_network_writer.put_writer(entity_update_writer)
 		
-	# Flush the pending spawn and destruction queues
+	# Flush the pending spawn, parenting, and destruction queues
 	network_entities_pending_spawn = []
+	network_entities_pending_reparenting = []
 	network_entities_pending_destruction = []
 		
 	var synced_peers = network_manager.get_synced_peers()
@@ -296,7 +347,7 @@ func get_packed_scene_for_scene_id(p_scene_id : int) -> PackedScene:
 	assert(networked_scenes.size() > p_scene_id)
 	
 	var path : String = networked_scenes[p_scene_id]
-	assert(ResourceLoader.has(path))
+	assert(ResourceLoader.exists(path))
 	
 	var packed_scene : PackedScene = ResourceLoader.load(path)
 	assert(packed_scene is PackedScene)
@@ -328,7 +379,7 @@ func decode_entity_spawn_command(p_network_reader : network_reader_const) -> net
 		return null
 	
 	var packed_scene : PackedScene = get_packed_scene_for_scene_id(scene_id)
-	var instance : entity_const = packed_scene.instance()
+	var entity_instance : entity_const = packed_scene.instance()
 	
 	# If this entity has a parent, try to find it
 	var parent_instance = null
@@ -339,26 +390,28 @@ func decode_entity_spawn_command(p_network_reader : network_reader_const) -> net
 		else:
 			ErrorManager.error("decode_entity_spawn_command: could not find parent entity!")
 	
-	instance.set_name("Entity")
-	instance.set_network_master(network_master)
+	entity_instance.set_name("Entity")
+	entity_instance.set_network_master(network_master)
 	
-	add_entity_instance(instance, parent_instance)
-	instance.network_identity_node.set_network_instance_id(instance_id)
-	instance.network_identity_node.update_state(p_network_reader, true)
+	add_entity_instance(entity_instance, parent_instance)
+	entity_instance.network_identity_node.set_network_instance_id(instance_id)
+	entity_instance.network_identity_node.update_state(p_network_reader, true)
 	
 	return p_network_reader
 	
 func decode_entity_update_command(p_network_reader : network_reader_const) -> network_reader_const:
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	var instance_id : int = read_entity_instance_id(p_network_reader)
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	
 	var entity_state_size = p_network_reader.get_u32()
 	if network_instance_ids.has(instance_id):
-		var instance : entity_const = network_instance_ids[instance_id]
-		instance.update_state(p_network_reader, false)
+		var network_identity_instance = network_instance_ids[instance_id]
+		network_identity_instance.update_state(p_network_reader, false)
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
 	
@@ -366,17 +419,47 @@ func decode_entity_update_command(p_network_reader : network_reader_const) -> ne
 	
 func decode_entity_destroy_command(p_network_reader : network_reader_const) -> network_reader_const:
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	var instance_id : int = read_entity_instance_id(p_network_reader)
 	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	
 	if network_instance_ids.has(instance_id):
-		var instance = network_instance_ids[instance_id]
-		instance.get_entity_node().queue_free()
-		instance.get_entity_node().get_parent().remove_child(instance.get_entity_node())
+		var entity_instance = network_instance_ids[instance_id].get_entity_node()
+		entity_instance.queue_free()
+		entity_instance.get_parent().remove_child(entity_instance.get_entity_node())
 	else:
 		ErrorManager.fatal_error("Attempted to destroy invalid node")
+	
+	return p_network_reader
+	
+func decode_entity_set_parent_command(p_network_reader : network_reader_const) -> network_reader_const:
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
+	var instance_id : int = read_entity_instance_id(p_network_reader)
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
+	var parent_id = read_entity_parent_id(p_network_reader)
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
+	
+	if network_instance_ids.has(instance_id):
+		var entity_instance = network_instance_ids[instance_id].get_entity_node()
+		# If this entity has a parent, try to find it
+		var parent_instance = null
+		
+		var network_identity = get_network_instance_identity(parent_id)
+		if network_identity:
+			parent_instance = network_identity.get_entity_node()
+		
+		reparent_entity_instance(entity_instance, parent_instance) 
+	else:
+		ErrorManager.fatal_error("Attempted to reparent invalid node")
 	
 	return p_network_reader
 	
@@ -392,6 +475,8 @@ func decode_replication_buffer(p_buffer : PoolByteArray) -> network_reader_const
 				network_reader = decode_entity_update_command(network_reader)
 			DESTROY_ENTITY_COMMAND:
 				network_reader = decode_entity_destroy_command(network_reader)
+			SET_PARENT_ENTITY_COMMAND:
+				network_reader = decode_entity_set_parent_command(network_reader)
 			_:
 				break
 
