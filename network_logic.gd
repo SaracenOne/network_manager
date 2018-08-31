@@ -20,24 +20,6 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 		p_reader = child.on_deserialize(p_reader, p_initial_state)
 		
 	return p_reader
-	
-func on_client_master_serialize(p_writer : network_writer_const) -> network_writer_const:
-	if p_writer == null:
-		return p_writer
-	
-	for child in get_children():
-		p_writer = child.on_client_master_serialize(p_writer)
-		
-	return p_writer
-	
-func on_client_master_deserialize(p_reader : network_reader_const) -> network_reader_const:
-	if p_reader == null:
-		return p_reader
-	
-	for child in get_children():
-		p_reader = child.on_client_master_deserialize(p_reader)
-		
-	return p_reader
 
 func destroy_entity() -> void:
 	if _entity_node == null:

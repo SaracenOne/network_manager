@@ -334,8 +334,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 			if entity.is_inside_tree():
 				### get this working
 				if p_id == NetworkManager.SERVER_PEER_ID:
-					if (entity.get_network_master() != synced_peer):
-						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+					entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
 				else:
 					if (entity.get_network_master() == p_id):
 						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))

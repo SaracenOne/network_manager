@@ -9,18 +9,6 @@ static func write_transform(p_writer : network_writer_const, p_transform : Trans
 	
 	return p_writer
 
-func on_client_master_serialize(p_writer : network_writer_const) -> network_writer_const:
-	var transform = _entity_node.get_logic_node().get_transform()
-	p_writer = write_transform(p_writer, transform)
-		
-	return p_writer
-	
-func on_client_master_deserialize(p_reader : network_reader_const) -> network_reader_const:
-	var origin = Vector3(p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
-	var quat = Quat(p_reader.get_float(), p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
-		
-	return p_reader
-
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
 	if _entity_node.get_logic_node() == null:
 		_entity_node._ready()
@@ -34,6 +22,7 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	var origin = Vector3(p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
 	var quat = Quat(p_reader.get_float(), p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
 	
-	_entity_node.get_logic_node().set_transform(Transform(Basis(quat), origin))
+	if is_network_master() == false:
+		_entity_node.get_logic_node().set_transform(Transform(Basis(quat), origin))
 	
 	return p_reader
