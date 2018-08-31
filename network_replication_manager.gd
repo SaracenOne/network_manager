@@ -16,8 +16,8 @@ var max_networked_entities : int = 4096 # Default
 var networked_scenes : Array = []
 
 enum {
-	SPAWN_ENTITY_COMMAND = 0,
-	UPDATE_ENTITY_COMMAND,
+	UPDATE_ENTITY_COMMAND = 0,
+	SPAWN_ENTITY_COMMAND,
 	DESTROY_ENTITY_COMMAND,
 	SET_PARENT_ENTITY_COMMAND,
 }
@@ -237,12 +237,12 @@ func create_set_parent_entity_command_command(p_entity : entity_const) -> networ
 func create_entity_command(p_command : int, p_entity : entity_const) -> network_writer_const:
 	var network_writer : network_writer_const = network_writer_const.new()
 	match p_command:
-		SPAWN_ENTITY_COMMAND:
-			network_writer.put_u8(SPAWN_ENTITY_COMMAND)
-			network_writer.put_writer(create_entity_spawn_command(p_entity))
 		UPDATE_ENTITY_COMMAND:
 			network_writer.put_u8(UPDATE_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_update_command(p_entity))
+		SPAWN_ENTITY_COMMAND:
+			network_writer.put_u8(SPAWN_ENTITY_COMMAND)
+			network_writer.put_writer(create_entity_spawn_command(p_entity))
 		DESTROY_ENTITY_COMMAND:
 			network_writer.put_u8(DESTROY_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_destroy_command(p_entity))
@@ -292,54 +292,67 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 		
 	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer)
 	
-func _network_manager_process(p_delta : float) -> void:
-	# Spawn commands
-	var entity_spawn_writers : Array = []
-	for entity in network_entities_pending_spawn:
-		entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
+func _network_manager_process(p_id : int, p_delta : float) -> void:
+	var synced_peers = []
+	if p_id == NetworkManager.SERVER_PEER_ID:
+		synced_peers = network_manager.get_synced_peers()
+	else:
+		synced_peers = [NetworkManager.SERVER_PEER_ID]
 		
-	# Reparent commands
-	var entity_reparent_writers : Array = []
-	for entity in network_entities_pending_reparenting:
-		entity_reparent_writers.append(create_entity_command(SET_PARENT_ENTITY_COMMAND, entity))
+	for synced_peer in synced_peers:
+		var reliable_network_writer = network_writer_const.new()
+		var unreliable_network_writer = network_writer_const.new()
 		
-	# Destroy commands
-	var entity_destroy_writers : Array = []
-	for entity in network_entities_pending_destruction:
-		entity_destroy_writers.append(create_entity_command(DESTROY_ENTITY_COMMAND, entity))
-		
-	# Put spawn, reparent, and destroy commands into the reliable channel
-	var reliable_network_writer = network_writer_const.new()
-	for entity_spawn_writer in entity_spawn_writers:
-		reliable_network_writer.put_writer(entity_spawn_writer)
-	for entity_reparent_writer in entity_reparent_writers:
-		reliable_network_writer.put_writer(entity_reparent_writer)
-	for entity_destroy_writer in entity_destroy_writers:
-		reliable_network_writer.put_writer(entity_destroy_writer)
-	
-	# Update commands
-	var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
-	var entity_update_writers : Array = []
-	for entity in entities:
-		if entity.is_inside_tree():
-			entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
-		
-	# Put the update commands into the unreliable channel
-	var unreliable_network_writer = network_writer_const.new()
-	for entity_update_writer in entity_update_writers:
-		unreliable_network_writer.put_writer(entity_update_writer)
+		if p_id == NetworkManager.SERVER_PEER_ID:
+			# Spawn commands
+			var entity_spawn_writers : Array = []
+			for entity in network_entities_pending_spawn:
+				entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
+				
+			# Reparent commands
+			var entity_reparent_writers : Array = []
+			for entity in network_entities_pending_reparenting:
+				entity_reparent_writers.append(create_entity_command(SET_PARENT_ENTITY_COMMAND, entity))
+				
+			# Destroy commands
+			var entity_destroy_writers : Array = []
+			for entity in network_entities_pending_destruction:
+				entity_destroy_writers.append(create_entity_command(DESTROY_ENTITY_COMMAND, entity))
+				
+			# Put spawn, reparent, and destroy commands into the reliable channel
+			for entity_spawn_writer in entity_spawn_writers:
+				reliable_network_writer.put_writer(entity_spawn_writer)
+			for entity_reparent_writer in entity_reparent_writers:
+				reliable_network_writer.put_writer(entity_reparent_writer)
+			for entity_destroy_writer in entity_destroy_writers:
+				reliable_network_writer.put_writer(entity_destroy_writer)
+			
+		# Update commands
+		var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
+		var entity_update_writers : Array = []
+		for entity in entities:
+			if entity.is_inside_tree():
+				### get this working
+				if p_id == NetworkManager.SERVER_PEER_ID:
+					if (entity.get_network_master() != synced_peer):
+						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+				else:
+					if (entity.get_network_master() == p_id):
+						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+						
+		# Put the update commands into the unreliable channel
+		for entity_update_writer in entity_update_writers:
+			unreliable_network_writer.put_writer(entity_update_writer)
+				
+		if reliable_network_writer.get_size() > 0:
+			network_manager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+		if unreliable_network_writer.get_size() > 0:
+			network_manager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 		
 	# Flush the pending spawn, parenting, and destruction queues
 	network_entities_pending_spawn = []
 	network_entities_pending_reparenting = []
 	network_entities_pending_destruction = []
-		
-	var synced_peers = network_manager.get_synced_peers()
-	for synced_peer in synced_peers:
-		if reliable_network_writer.get_size() > 0:
-			network_manager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
-		if unreliable_network_writer.get_size() > 0:
-			network_manager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 """
 Client
 """
@@ -353,26 +366,56 @@ func get_packed_scene_for_scene_id(p_scene_id : int) -> PackedScene:
 	assert(packed_scene is PackedScene)
 	
 	return packed_scene
-
-func decode_entity_spawn_command(p_network_reader : network_reader_const) -> network_reader_const:
+	
+func decode_entity_update_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
+	var instance_id : int = read_entity_instance_id(p_network_reader)
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
+	
+	var entity_state_size = p_network_reader.get_u32()
+	if network_instance_ids.has(instance_id):
+		var network_identity_instance = network_instance_ids[instance_id]
+		if (network_manager.is_server() and network_identity_instance.get_network_master() == p_id) or p_id == NetworkManager.SERVER_PEER_ID:
+			network_identity_instance.update_state(p_network_reader, false)
+	else:
+		print(p_network_reader.stream_peer_buffer.data_array)
+		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
+	
+	return p_network_reader
+
+func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_id != NetworkManager.SERVER_PEER_ID:
+		ErrorManager.error("decode_entity_spawn_command: recieved spawn command from non server ID!")
+		return null
+		
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_spawn_command: eof!")
+		return null
+		
 	var scene_id = read_entity_scene_id(p_network_reader, networked_scenes)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
 	var instance_id = read_entity_instance_id(p_network_reader)
 	if instance_id <= NULL_NETWORK_INSTANCE_ID:
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
 	var parent_id = read_entity_parent_id(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
 	var network_master = read_entity_network_master(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
@@ -399,28 +442,15 @@ func decode_entity_spawn_command(p_network_reader : network_reader_const) -> net
 	
 	return p_network_reader
 	
-func decode_entity_update_command(p_network_reader : network_reader_const) -> network_reader_const:
+func decode_entity_destroy_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_id != NetworkManager.SERVER_PEER_ID:
+		ErrorManager.error("decode_entity_destroy_command: recieved destroy command from non server ID!")
+		return null
+	
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
-	var instance_id : int = read_entity_instance_id(p_network_reader)
-	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_spawn_command: eof!")
-		return null
-	
-	var entity_state_size = p_network_reader.get_u32()
-	if network_instance_ids.has(instance_id):
-		var network_identity_instance = network_instance_ids[instance_id]
-		network_identity_instance.update_state(p_network_reader, false)
-	else:
-		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
-	
-	return p_network_reader
-	
-func decode_entity_destroy_command(p_network_reader : network_reader_const) -> network_reader_const:
-	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_spawn_command: eof!")
-		return null
+		
 	var instance_id : int = read_entity_instance_id(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
@@ -435,14 +465,20 @@ func decode_entity_destroy_command(p_network_reader : network_reader_const) -> n
 	
 	return p_network_reader
 	
-func decode_entity_set_parent_command(p_network_reader : network_reader_const) -> network_reader_const:
+func decode_entity_set_parent_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_id != NetworkManager.SERVER_PEER_ID:
+		ErrorManager.error("decode_entity_set_parent_command: recieved set_parent command from non server ID!")
+		return null
+	
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
 	var instance_id : int = read_entity_instance_id(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
+		
 	var parent_id = read_entity_parent_id(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
@@ -463,20 +499,22 @@ func decode_entity_set_parent_command(p_network_reader : network_reader_const) -
 	
 	return p_network_reader
 	
-func decode_replication_buffer(p_buffer : PoolByteArray) -> network_reader_const:
+func decode_replication_buffer(p_id : int, p_buffer : PoolByteArray) -> network_reader_const:
 	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
 	
 	while network_reader and network_reader.is_eof() == false:
 		var command = network_reader.get_u8()
 		match command:
-			SPAWN_ENTITY_COMMAND:
-				network_reader = decode_entity_spawn_command(network_reader)
 			UPDATE_ENTITY_COMMAND:
-				network_reader = decode_entity_update_command(network_reader)
+				network_reader = decode_entity_update_command(p_id, network_reader)
+			SPAWN_ENTITY_COMMAND:
+				network_reader = decode_entity_spawn_command(p_id, network_reader)
 			DESTROY_ENTITY_COMMAND:
-				network_reader = decode_entity_destroy_command(network_reader)
+				print(p_buffer)
+				network_reader = decode_entity_destroy_command(p_id, network_reader)
 			SET_PARENT_ENTITY_COMMAND:
-				network_reader = decode_entity_set_parent_command(network_reader)
+				print(p_buffer)
+				network_reader = decode_entity_set_parent_command(p_id, network_reader)
 			_:
 				break
 

@@ -12,9 +12,6 @@ const network_writer_const = preload("res://addons/network_manager/network_write
 
 var writer : network_writer_const = network_writer_const.new()
 
-export(bool) var server_only : bool = false
-export(bool) var local_player_authority : bool = false
-
 signal network_update_complete(p_identity)
 
 """         

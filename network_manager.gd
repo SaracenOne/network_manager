@@ -142,6 +142,8 @@ func close_connection() -> void:
 	if has_active_peer():
 		var net : NetworkedMultiplayerPeer = get_tree().multiplayer.get_network_peer()
 		net.close_connection()
+		
+		client_state = VALIDATION_STATE_NONE
 
 func get_current_peer_id() -> int:
 	if has_active_peer():
@@ -306,6 +308,10 @@ func confirm_client_ready_for_sync(p_network_id : int) -> void:
 		peer_server_data[p_network_id].time_since_last_update = 0.0
 		peer_server_data[p_network_id].validation_state = VALIDATION_STATE_SYNCED
 		
+func confirm_server_ready_for_sync() -> void:
+	print("confirm_server_ready_for_sync...")
+	client_state = VALIDATION_STATE_SYNCED
+		
 func server_kick_player(p_id : int) -> void:
 	print("server_kick_player...")
 	if is_server():
@@ -323,7 +329,10 @@ func _process(p_delta : float) -> void:
 		if is_server():
 			for peer in get_peer_list():
 				peer_server_data[peer].time_since_last_update += p_delta
-			emit_signal("network_process", p_delta)
+				
+		if has_active_peer():
+			if is_server() or client_state == VALIDATION_STATE_SYNCED:
+				emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:
