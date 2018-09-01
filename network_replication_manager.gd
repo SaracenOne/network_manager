@@ -382,7 +382,6 @@ func decode_entity_update_command(p_id : int, p_network_reader : network_reader_
 		if (network_manager.is_server() and network_identity_instance.get_network_master() == p_id) or p_id == NetworkManager.SERVER_PEER_ID:
 			network_identity_instance.update_state(p_network_reader, false)
 	else:
-		print(p_network_reader.stream_peer_buffer.data_array)
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
 	
 	return p_network_reader
@@ -509,10 +508,8 @@ func decode_replication_buffer(p_id : int, p_buffer : PoolByteArray) -> network_
 			SPAWN_ENTITY_COMMAND:
 				network_reader = decode_entity_spawn_command(p_id, network_reader)
 			DESTROY_ENTITY_COMMAND:
-				print(p_buffer)
 				network_reader = decode_entity_destroy_command(p_id, network_reader)
 			SET_PARENT_ENTITY_COMMAND:
-				print(p_buffer)
 				network_reader = decode_entity_set_parent_command(p_id, network_reader)
 			_:
 				break
