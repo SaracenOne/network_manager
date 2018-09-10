@@ -13,10 +13,6 @@ enum validation_state_enum {
 	VALIDATION_STATE_SYNCED
 }
 
-# Version (used to validate if client and server are using compatible version of the game)
-var network_protocol_version_major : int = 0
-var network_protocol_version_minor : int = 1
-
 # Server
 var entity_root_node_path : NodePath = NodePath()
 var server_dedicated : bool = false
@@ -24,13 +20,9 @@ var max_players : int  = -1
 var peer_server_data : Dictionary = {}
 
 # Client/Server
-var private_encryption_key : String = ""
 var client_state : int = VALIDATION_STATE_NONE
 
 var peers : Array = []
-
-# Universal Plug-and-Play
-var upnp : UPNP = null
 
 signal network_process(p_delta)
 signal game_hosted()
@@ -44,9 +36,6 @@ signal connection_failed()
 signal connection_succeeded()
 signal server_disconnected()
 signal network_peer_packet()
-
-signal game_ended()
-signal game_error(p_what)
 
 #Server
 func _network_peer_connected(p_id : int) -> void:
@@ -83,17 +72,6 @@ func is_server() -> bool:
 	
 func is_rpc_sender_id_server() -> bool:
 	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_PEER_ID
-	
-func set_up_upnp() -> void:
-	upnp = UPNP.new()
-	var upnp_discovery_result : int = upnp.discover()
-	var upnp_result : int = upnp.add_port_mapping(1234)
-	if upnp_result == UPNP.UPNP_RESULT_SUCCESS:
-		pass
-	else:
-		pass
-		
-	return
 
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	if has_active_peer():
@@ -197,7 +175,9 @@ sync func unregister_peer(p_id : int) -> void:
 	
 	peers.erase(p_id)
 	if is_server():
-		peer_server_data.erase(p_id)
+		var erase_result = peer_server_data.erase(p_id)
+		if erase_result != OK:
+			printerr("Could not erase peer server data!")
 	
 	emit_signal("peer_unregistered", p_id)
 	emit_signal("peer_list_changed")
@@ -214,8 +194,8 @@ slave func peer_registration_complete() -> void:
 func peer_is_connected(p_id : int) -> bool:
 	var connected_peers : PoolIntArray = get_connected_peers()
 	for i in range(0, connected_peers.size()):
-		connected_peers[i] == p_id
-		return true
+		if connected_peers[i] == p_id:
+			return true
 		
 	return false
 	
@@ -245,8 +225,6 @@ signal requested_server_info(p_id, p_client_message)
 signal received_server_info(p_info)
 signal requested_server_state(p_id, p_client_message)
 signal received_server_state(p_state)
-
-signal update_server_entities()
 
 master func create_server_info() -> void:
 	print("create_server_info...")
@@ -322,7 +300,9 @@ func server_kick_player(p_id : int) -> void:
 
 func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) -> void:
 	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
-	get_tree().multiplayer.send_bytes(p_buffer, p_id)
+	var send_bytes_result = get_tree().multiplayer.send_bytes(p_buffer, p_id)
+	if send_bytes_result != OK:
+		printerr("send bytes error :" + str(send_bytes_result))
 		
 func _process(p_delta : float) -> void:
 	if Engine.is_editor_hint() == false:
@@ -336,16 +316,30 @@ func _process(p_delta : float) -> void:
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:
+		var connect_result = OK
+		
 		#Server and Clients
-		get_tree().multiplayer.connect("network_peer_connected", self, "_network_peer_connected")
-		get_tree().multiplayer.connect("network_peer_disconnected", self,"_network_peer_disconnected")
+		connect_result = get_tree().multiplayer.connect("network_peer_connected", self, "_network_peer_connected")
+		if connect_result != OK:
+			printerr("NetworkManager: network_peer_connected could not be connected!")
+		connect_result = get_tree().multiplayer.connect("network_peer_disconnected", self,"_network_peer_disconnected")
+		if connect_result != OK:
+			printerr("NetworkManager: network_peer_disconnected could not be connected!")
 		
 		#Clients
-		get_tree().multiplayer.connect("connected_to_server", self, "_connected_to_server")
-		get_tree().multiplayer.connect("connection_failed", self, "_connection_failed")
-		get_tree().multiplayer.connect("server_disconnected", self, "_server_disconnected")
+		connect_result = get_tree().multiplayer.connect("connected_to_server", self, "_connected_to_server")
+		if connect_result != OK:
+			printerr("NetworkManager: connected_to_server could not be connected!")
+		connect_result = get_tree().multiplayer.connect("connection_failed", self, "_connection_failed")
+		if connect_result != OK:
+			printerr("NetworkManager: connection_failed could not be connected!")
+		connect_result = get_tree().multiplayer.connect("server_disconnected", self, "_server_disconnected")
+		if connect_result != OK:
+			printerr("NetworkManager: server_disconnected could not be connected!")
 		
 		###
-		get_tree().multiplayer.connect("network_peer_packet", self, "_network_peer_packet")
+		connect_result = get_tree().multiplayer.connect("network_peer_packet", self, "_network_peer_packet")
+		if connect_result != OK:
+			printerr("NetworkManager: network_peer_packet could not be connected!")
 		
 		entity_root_node_path = NodePath(ProjectSettings.get_setting("network/config/entity_root_node"))

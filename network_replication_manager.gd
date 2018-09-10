@@ -128,10 +128,9 @@ func add_entity_instance(p_instance : Node, p_parent : Node = null) -> Node:
 	
 	return p_instance
 	
-func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> bool:
+func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> void:
 	if !p_instance.is_inside_tree():
 		ErrorManager.error("reparent_entity_instance: entity not inside tree!")
-		return false
 		
 	var last_global_transform = Transform()
 	if p_instance.logic_node:
@@ -147,8 +146,6 @@ func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> bool
 	if p_instance.logic_node:
 		p_instance.logic_node.set_global_transform(last_global_transform)
 	
-	return true
-	
 func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
 	var instance = p_packed_scene.instance()
 	instance.set_name(p_name)
@@ -158,8 +155,7 @@ func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Ent
 	
 func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
 	var instance = create_entity_instance(p_packed_scene, p_name, p_master_id)
-	instance = add_entity_instance(instance)
-	return instance
+	return add_entity_instance(instance)
 		
 	
 func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID, p_transform : Transform = Transform()) -> Node:
@@ -168,9 +164,6 @@ func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : Strin
 		instance.set_global_transform(p_transform)
 	
 	return instance
-	
-func instantiate_entity_replicated(p_scene_id : int, p_instance_id : int, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID, p_transform : Transform = Transform()) -> void:
-	pass
 	
 func get_next_network_id() -> int:
 	# TODO: validate overflow and duplicates
@@ -182,7 +175,9 @@ func register_network_instance_id(p_network_instance_id : int, p_node : Node) ->
 	network_instance_ids[p_network_instance_id] = p_node
 	
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
-	network_instance_ids.erase(p_network_instance_id)
+	var erase_result = network_instance_ids.erase(p_network_instance_id)
+	if erase_result != OK:
+		printerr("Could not unregister network instance id " + str(p_network_instance_id))
 	
 func get_network_instance_identity(p_network_instance_id : int) -> Node:
 	if network_instance_ids.has(p_network_instance_id):
@@ -293,65 +288,66 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer)
 	
 func _network_manager_process(p_id : int, p_delta : float) -> void:
-	var synced_peers = []
-	if p_id == NetworkManager.SERVER_PEER_ID:
-		synced_peers = network_manager.get_synced_peers()
-	else:
-		synced_peers = [NetworkManager.SERVER_PEER_ID]
-		
-	for synced_peer in synced_peers:
-		var reliable_network_writer = network_writer_const.new()
-		var unreliable_network_writer = network_writer_const.new()
-		
+	if p_delta > 0.0:
+		var synced_peers = []
 		if p_id == NetworkManager.SERVER_PEER_ID:
-			# Spawn commands
-			var entity_spawn_writers : Array = []
-			for entity in network_entities_pending_spawn:
-				entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
-				
-			# Reparent commands
-			var entity_reparent_writers : Array = []
-			for entity in network_entities_pending_reparenting:
-				entity_reparent_writers.append(create_entity_command(SET_PARENT_ENTITY_COMMAND, entity))
-				
-			# Destroy commands
-			var entity_destroy_writers : Array = []
-			for entity in network_entities_pending_destruction:
-				entity_destroy_writers.append(create_entity_command(DESTROY_ENTITY_COMMAND, entity))
-				
-			# Put spawn, reparent, and destroy commands into the reliable channel
-			for entity_spawn_writer in entity_spawn_writers:
-				reliable_network_writer.put_writer(entity_spawn_writer)
-			for entity_reparent_writer in entity_reparent_writers:
-				reliable_network_writer.put_writer(entity_reparent_writer)
-			for entity_destroy_writer in entity_destroy_writers:
-				reliable_network_writer.put_writer(entity_destroy_writer)
+			synced_peers = network_manager.get_synced_peers()
+		else:
+			synced_peers = [NetworkManager.SERVER_PEER_ID]
 			
-		# Update commands
-		var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
-		var entity_update_writers : Array = []
-		for entity in entities:
-			if entity.is_inside_tree():
-				### get this working
-				if p_id == NetworkManager.SERVER_PEER_ID:
-					entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
-				else:
-					if (entity.get_network_master() == p_id):
-						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
-						
-		# Put the update commands into the unreliable channel
-		for entity_update_writer in entity_update_writers:
-			unreliable_network_writer.put_writer(entity_update_writer)
+		for synced_peer in synced_peers:
+			var reliable_network_writer = network_writer_const.new()
+			var unreliable_network_writer = network_writer_const.new()
+			
+			if p_id == NetworkManager.SERVER_PEER_ID:
+				# Spawn commands
+				var entity_spawn_writers : Array = []
+				for entity in network_entities_pending_spawn:
+					entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
+					
+				# Reparent commands
+				var entity_reparent_writers : Array = []
+				for entity in network_entities_pending_reparenting:
+					entity_reparent_writers.append(create_entity_command(SET_PARENT_ENTITY_COMMAND, entity))
+					
+				# Destroy commands
+				var entity_destroy_writers : Array = []
+				for entity in network_entities_pending_destruction:
+					entity_destroy_writers.append(create_entity_command(DESTROY_ENTITY_COMMAND, entity))
+					
+				# Put spawn, reparent, and destroy commands into the reliable channel
+				for entity_spawn_writer in entity_spawn_writers:
+					reliable_network_writer.put_writer(entity_spawn_writer)
+				for entity_reparent_writer in entity_reparent_writers:
+					reliable_network_writer.put_writer(entity_reparent_writer)
+				for entity_destroy_writer in entity_destroy_writers:
+					reliable_network_writer.put_writer(entity_destroy_writer)
 				
-		if reliable_network_writer.get_size() > 0:
-			network_manager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
-		if unreliable_network_writer.get_size() > 0:
-			network_manager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
-		
-	# Flush the pending spawn, parenting, and destruction queues
-	network_entities_pending_spawn = []
-	network_entities_pending_reparenting = []
-	network_entities_pending_destruction = []
+			# Update commands
+			var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
+			var entity_update_writers : Array = []
+			for entity in entities:
+				if entity.is_inside_tree():
+					### get this working
+					if p_id == NetworkManager.SERVER_PEER_ID:
+						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+					else:
+						if (entity.get_network_master() == p_id):
+							entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+							
+			# Put the update commands into the unreliable channel
+			for entity_update_writer in entity_update_writers:
+				unreliable_network_writer.put_writer(entity_update_writer)
+					
+			if reliable_network_writer.get_size() > 0:
+				network_manager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+			if unreliable_network_writer.get_size() > 0:
+				network_manager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
+			
+		# Flush the pending spawn, parenting, and destruction queues
+		network_entities_pending_spawn = []
+		network_entities_pending_reparenting = []
+		network_entities_pending_destruction = []
 """
 Client
 """
@@ -434,7 +430,7 @@ func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_c
 	entity_instance.set_name("Entity")
 	entity_instance.set_network_master(network_master)
 	
-	add_entity_instance(entity_instance, parent_instance)
+	entity_instance = add_entity_instance(entity_instance, parent_instance)
 	entity_instance.network_identity_node.set_network_instance_id(instance_id)
 	entity_instance.network_identity_node.update_state(p_network_reader, true)
 	
@@ -497,7 +493,7 @@ func decode_entity_set_parent_command(p_id : int, p_network_reader : network_rea
 	
 	return p_network_reader
 	
-func decode_replication_buffer(p_id : int, p_buffer : PoolByteArray) -> network_reader_const:
+func decode_replication_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
 	
 	while network_reader and network_reader.is_eof() == false:
@@ -513,8 +509,6 @@ func decode_replication_buffer(p_id : int, p_buffer : PoolByteArray) -> network_
 				network_reader = decode_entity_set_parent_command(p_id, network_reader)
 			_:
 				break
-
-	return network_reader
 	
 func _ready() -> void:
 	if(!ProjectSettings.has_setting("network/config/networked_scenes")):
@@ -527,6 +521,8 @@ func _ready() -> void:
 		"hint_string": ""
 	}
 	
+	ProjectSettings.add_property_info(networked_objects_property_info)
+	
 	if(!ProjectSettings.has_setting("network/config/max_networked_entities")):
 		ProjectSettings.set_setting("network/config/max_networked_entities", max_networked_entities)
 	
@@ -534,10 +530,18 @@ func _ready() -> void:
 		network_manager = get_node("/root/NetworkManager")
 		entity_manager = get_node("/root/EntityManager")
 		
-		entity_manager.connect("entity_added", self, "_entity_added")
-		entity_manager.connect("entity_removed", self, "_entity_removed")
+		var connect_result = OK
 		
-		network_manager.connect("network_process", self, "_network_manager_process")
+		connect_result = entity_manager.connect("entity_added", self, "_entity_added")
+		if connect_result != OK:
+			printerr("NetworkReplicationManager: entity_added could not be connected")
+		connect_result = entity_manager.connect("entity_removed", self, "_entity_removed")
+		if connect_result != OK:
+			printerr("NetworkReplicationManager: entity_removed could not be connected")
+		
+		connect_result = network_manager.connect("network_process", self, "_network_manager_process")
+		if connect_result != OK:
+			printerr("NetworkReplicationManager: network_process could not be connected")
 		
 		var network_scenes_config = ProjectSettings.get_setting("network/config/networked_scenes")
 		if typeof(network_scenes_config) != TYPE_STRING_ARRAY:

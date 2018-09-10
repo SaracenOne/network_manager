@@ -22,8 +22,8 @@ func get_position() -> int:
 func get_size() -> int:
 	return stream_peer_buffer.get_size()
 
-func seek(p_position : int) -> int:
-	return stream_peer_buffer.seek(p_position)
+func seek(p_position : int) -> void:
+	stream_peer_buffer.seek(p_position)
 
 func get_8() -> int:
 	return stream_peer_buffer.get_8()

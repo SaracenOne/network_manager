@@ -10,10 +10,6 @@ var network_replication_manager : network_replication_manager_const = null
 const network_reader_const = preload("res://addons/network_manager/network_reader.gd")
 const network_writer_const = preload("res://addons/network_manager/network_writer.gd")
 
-var writer : network_writer_const = network_writer_const.new()
-
-signal network_update_complete(p_identity)
-
 """         
 Network Instance ID
 """
@@ -55,7 +51,7 @@ func update_state(p_reader : network_reader_const, p_initial_state : bool) -> ne
 	
 func get_network_root_node():
 	if network_replication_manager:
-		network_replication_manager.get_entity_root_node()
+		return network_replication_manager.get_entity_root_node()
 	
 func send_parent_entity_update():
 	if network_replication_manager:
