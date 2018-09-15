@@ -183,7 +183,7 @@ sync func unregister_peer(p_id : int) -> void:
 	emit_signal("peer_list_changed")
 	
 # Called after all other clients have been registered to the new client
-slave func peer_registration_complete() -> void:
+puppet func peer_registration_complete() -> void:
 	# Client does not have direct permission to access this method
 	if not is_server() and not is_rpc_sender_id_server():
 		return
@@ -258,7 +258,7 @@ master func requested_server_info(p_client_message: Dictionary) -> void:
 		emit_signal("requested_server_info", rpc_sender_id, p_client_message)
 		
 # Called by the server 
-slave func received_server_info(p_info : Dictionary) -> void:
+puppet func received_server_info(p_info : Dictionary) -> void:
 	print("received_server_info...")
 	emit_signal("received_server_info", p_info)
 		
@@ -274,7 +274,7 @@ master func requested_server_state(p_client_message: Dictionary) -> void:
 		peer_server_data[rpc_sender_id].time_since_last_update = 0.0
 		emit_signal("requested_server_state", rpc_sender_id, p_client_message)
 		
-slave func received_server_state(p_state : PoolByteArray) -> void:
+puppet func received_server_state(p_state : PoolByteArray) -> void:
 	print("received_server_state...")
 	emit_signal("received_server_state", p_state)
 		
