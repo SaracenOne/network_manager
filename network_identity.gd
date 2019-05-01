@@ -42,11 +42,11 @@ func on_exit() -> void:
 		network_replication_manager.unregister_network_instance_id(network_instance_id)
 	
 func get_state(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	p_writer = _entity_node.network_logic_node.on_serialize(p_writer, p_initial_state)
+	p_writer = get_entity_node().network_logic_node.on_serialize(p_writer, p_initial_state)
 	return p_writer
 	
 func update_state(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
-	p_reader = _entity_node.network_logic_node.on_deserialize(p_reader, p_initial_state)
+	p_reader = get_entity_node().network_logic_node.on_deserialize(p_reader, p_initial_state)
 	return p_reader
 	
 func get_network_root_node():
@@ -70,7 +70,7 @@ func _ready() -> void:
 			if network_manager.is_server():
 				set_network_instance_id(network_replication_manager.get_next_network_id())
 				
-			set_network_scene_id(network_replication_manager.get_network_scene_id_from_path(_entity_node.filename))
+			set_network_scene_id(network_replication_manager.get_network_scene_id_from_path(get_entity_node().filename))
 			
-			_entity_node.add_to_group("NetworkedEntities")
-			_entity_node.connect("tree_exited", self, "on_exit")
+			get_entity_node().add_to_group("NetworkedEntities")
+			get_entity_node().connect("tree_exited", self, "on_exit")

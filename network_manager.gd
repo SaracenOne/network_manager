@@ -20,7 +20,7 @@ var max_players : int  = -1
 var peer_server_data : Dictionary = {}
 
 # Client/Server
-var client_state : int = VALIDATION_STATE_NONE
+var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
 
 var peers : Array = []
 
@@ -39,7 +39,7 @@ signal network_peer_packet()
 
 #Server
 func _network_peer_connected(p_id : int) -> void:
-	peer_server_data[p_id] = {"validation_state":VALIDATION_STATE_NONE, "time_since_last_update":0.0}
+	peer_server_data[p_id] = {"validation_state":validation_state_enum.VALIDATION_STATE_NONE, "time_since_last_update":0.0}
 	print("Network peer " + str(p_id) + " connected!")
 
 func _network_peer_disconnected(p_id : int) -> void:
@@ -121,7 +121,7 @@ func close_connection() -> void:
 		var net : NetworkedMultiplayerPeer = get_tree().multiplayer.get_network_peer()
 		net.close_connection()
 		
-		client_state = VALIDATION_STATE_NONE
+		client_state = validation_state_enum.VALIDATION_STATE_NONE
 
 func get_current_peer_id() -> int:
 	if has_active_peer():
@@ -138,7 +138,7 @@ remote func register_peer(p_id : int) -> void:
 	
 	# Client does not have direct permission to access this method
 	if is_server():
-		if peer_server_data[p_id].validation_state != VALIDATION_STATE_NONE:
+		if peer_server_data[p_id].validation_state != validation_state_enum.VALIDATION_STATE_NONE:
 			return
 		peer_server_data[p_id].time_since_last_update = 0.0
 	else:
@@ -165,7 +165,7 @@ remote func register_peer(p_id : int) -> void:
 	emit_signal("peer_list_changed")
 	
 	if is_server():
-		peer_server_data[p_id].validation_state = VALIDATION_STATE_PEERS_SENT
+		peer_server_data[p_id].validation_state = validation_state_enum.VALIDATION_STATE_PEERS_SENT
 		rpc_id(rpc_sender_id, "peer_registration_complete") # Validate that all player registration has now been completed
 
 sync func unregister_peer(p_id : int) -> void:
@@ -207,7 +207,7 @@ func get_synced_peers() -> Array:
 	var valid_peers : Array = []
 	if is_server():
 		for key in peer_server_data.keys():
-			if peer_server_data[key].validation_state == VALIDATION_STATE_SYNCED:
+			if peer_server_data[key].validation_state == validation_state_enum.VALIDATION_STATE_SYNCED:
 				valid_peers.append(key)
 				
 	return valid_peers
@@ -250,10 +250,10 @@ master func requested_server_info(p_client_message: Dictionary) -> void:
 	print("requested_server_info...")
 	var rpc_sender_id : int = get_tree().multiplayer.get_rpc_sender_id()
 	
-	if peer_server_data[rpc_sender_id].validation_state != VALIDATION_STATE_PEERS_SENT:
+	if peer_server_data[rpc_sender_id].validation_state != validation_state_enum.VALIDATION_STATE_PEERS_SENT:
 		peer_validation_state_error_callback()
 	else:
-		peer_server_data[rpc_sender_id].validation_state = VALIDATION_STATE_INFO_SENT
+		peer_server_data[rpc_sender_id].validation_state = validation_state_enum.VALIDATION_STATE_INFO_SENT
 		peer_server_data[rpc_sender_id].time_since_last_update = 0.0
 		emit_signal("requested_server_info", rpc_sender_id, p_client_message)
 		
@@ -267,10 +267,10 @@ master func requested_server_state(p_client_message: Dictionary) -> void:
 	print("requested_server_state...")
 	var rpc_sender_id : int = get_tree().multiplayer.get_rpc_sender_id()
 	
-	if peer_server_data[rpc_sender_id].validation_state != VALIDATION_STATE_INFO_SENT:
+	if peer_server_data[rpc_sender_id].validation_state != validation_state_enum.VALIDATION_STATE_INFO_SENT:
 		peer_validation_state_error_callback()
 	else:
-		peer_server_data[rpc_sender_id].validation_state = VALIDATION_STATE_STATE_SENT
+		peer_server_data[rpc_sender_id].validation_state = validation_state_enum.VALIDATION_STATE_STATE_SENT
 		peer_server_data[rpc_sender_id].time_since_last_update = 0.0
 		emit_signal("requested_server_state", rpc_sender_id, p_client_message)
 		
@@ -280,15 +280,15 @@ puppet func received_server_state(p_state : PoolByteArray) -> void:
 		
 func confirm_client_ready_for_sync(p_network_id : int) -> void:
 	print("confirm_client_ready_for_sync...")
-	if peer_server_data[p_network_id].validation_state != VALIDATION_STATE_STATE_SENT:
+	if peer_server_data[p_network_id].validation_state != validation_state_enum.VALIDATION_STATE_STATE_SENT:
 		peer_validation_state_error_callback()
 	else:
 		peer_server_data[p_network_id].time_since_last_update = 0.0
-		peer_server_data[p_network_id].validation_state = VALIDATION_STATE_SYNCED
+		peer_server_data[p_network_id].validation_state = validation_state_enum.VALIDATION_STATE_SYNCED
 		
 func confirm_server_ready_for_sync() -> void:
 	print("confirm_server_ready_for_sync...")
-	client_state = VALIDATION_STATE_SYNCED
+	client_state = validation_state_enum.VALIDATION_STATE_SYNCED
 		
 func server_kick_player(p_id : int) -> void:
 	print("server_kick_player...")
@@ -311,7 +311,7 @@ func _process(p_delta : float) -> void:
 				peer_server_data[peer].time_since_last_update += p_delta
 				
 		if has_active_peer():
-			if is_server() or client_state == VALIDATION_STATE_SYNCED:
+			if is_server() or client_state == validation_state_enum.VALIDATION_STATE_SYNCED:
 				emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
 	
 func _ready() -> void:
