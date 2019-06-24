@@ -1,8 +1,5 @@
 extends "network_logic.gd"
 
-const network_reader_const = preload("res://addons/network_manager/network_reader.gd")
-const network_writer_const = preload("res://addons/network_manager/network_writer.gd")
-
 static func write_transform(p_writer : network_writer_const, p_transform : Transform) -> network_writer_const:
 	p_writer.put_vector3(p_transform.origin)
 	p_writer.put_quat(Quat(p_transform.basis))
