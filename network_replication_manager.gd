@@ -132,7 +132,7 @@ func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> void
 	if !p_instance.is_inside_tree():
 		ErrorManager.error("reparent_entity_instance: entity not inside tree!")
 		
-	var last_global_transform = Transform()
+	var last_global_transform : Transform = Transform()
 	if p_instance.logic_node:
 		last_global_transform = p_instance.logic_node.get_global_transform()
 		
@@ -147,14 +147,14 @@ func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> void
 		p_instance.logic_node.set_global_transform(last_global_transform)
 	
 func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
-	var instance = p_packed_scene.instance()
+	var instance : Node = p_packed_scene.instance()
 	instance.set_name(p_name)
 	instance.set_network_master(p_master_id)
 	
 	return instance
 	
 func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID) -> Node:
-	var instance = create_entity_instance(p_packed_scene, p_name, p_master_id)
+	var instance : Node = create_entity_instance(p_packed_scene, p_name, p_master_id)
 	return add_entity_instance(instance)
 		
 	
@@ -167,7 +167,7 @@ func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : Strin
 	
 func get_next_network_id() -> int:
 	# TODO: validate overflow and duplicates
-	var network_instance_id = next_network_instance_id
+	var network_instance_id : int = next_network_instance_id
 	next_network_instance_id += 1
 	return network_instance_id
 	
@@ -391,12 +391,12 @@ func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_c
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 		
-	var scene_id = read_entity_scene_id(p_network_reader, networked_scenes)
+	var scene_id : int = read_entity_scene_id(p_network_reader, networked_scenes)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 		
-	var instance_id = read_entity_instance_id(p_network_reader)
+	var instance_id : int = read_entity_instance_id(p_network_reader)
 	if instance_id <= NULL_NETWORK_INSTANCE_ID:
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
@@ -405,12 +405,12 @@ func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_c
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 		
-	var parent_id = read_entity_parent_id(p_network_reader)
+	var parent_id : int = read_entity_parent_id(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 		
-	var network_master = read_entity_network_master(p_network_reader)
+	var network_master : int = read_entity_network_master(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
@@ -421,7 +421,7 @@ func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_c
 	# If this entity has a parent, try to find it
 	var parent_instance = null
 	if parent_id > NULL_NETWORK_INSTANCE_ID:
-		var network_identity = get_network_instance_identity(parent_id)
+		var network_identity : Node = get_network_instance_identity(parent_id)
 		if network_identity:
 			parent_instance = network_identity.get_entity_node()
 		else:
@@ -451,7 +451,7 @@ func decode_entity_destroy_command(p_id : int, p_network_reader : network_reader
 		return null
 	
 	if network_instance_ids.has(instance_id):
-		var entity_instance = network_instance_ids[instance_id].get_entity_node()
+		var entity_instance : Node = network_instance_ids[instance_id].get_entity_node()
 		entity_instance.queue_free()
 		entity_instance.get_parent().remove_child(entity_instance.get_entity_node())
 	else:
@@ -473,17 +473,17 @@ func decode_entity_set_parent_command(p_id : int, p_network_reader : network_rea
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 		
-	var parent_id = read_entity_parent_id(p_network_reader)
+	var parent_id : int = read_entity_parent_id(p_network_reader)
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	
 	if network_instance_ids.has(instance_id):
-		var entity_instance = network_instance_ids[instance_id].get_entity_node()
+		var entity_instance : Node = network_instance_ids[instance_id].get_entity_node()
 		# If this entity has a parent, try to find it
 		var parent_instance = null
 		
-		var network_identity = get_network_instance_identity(parent_id)
+		var network_identity : Node = get_network_instance_identity(parent_id)
 		if network_identity:
 			parent_instance = network_identity.get_entity_node()
 		

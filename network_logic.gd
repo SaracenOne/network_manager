@@ -1,4 +1,5 @@
 extends "res://addons/entity_manager/component_node.gd"
+class_name NetworkLogic
 
 const network_reader_const = preload("res://addons/network_manager/network_reader.gd")
 const network_writer_const = preload("res://addons/network_manager/network_writer.gd")

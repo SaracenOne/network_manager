@@ -1,4 +1,5 @@
 extends "res://addons/entity_manager/component_node.gd"
+class_name NetworkIdentity
 tool
 
 const network_manager_const = preload("res://addons/network_manager/network_manager.gd")
@@ -16,7 +17,7 @@ Network Instance ID
 var network_instance_id : int = network_replication_manager_const.NULL_NETWORK_INSTANCE_ID setget set_network_instance_id
 var network_scene_id : int = -1 setget set_network_scene_id
 
-func is_network_manager_valid():
+func is_network_manager_valid() -> bool:
 	if network_manager != null and network_replication_manager != null:
 		return true
 		
@@ -49,11 +50,13 @@ func update_state(p_reader : network_reader_const, p_initial_state : bool) -> ne
 	p_reader = get_entity_node().network_logic_node.on_deserialize(p_reader, p_initial_state)
 	return p_reader
 	
-func get_network_root_node():
+func get_network_root_node() -> Node:
 	if network_replication_manager:
 		return network_replication_manager.get_entity_root_node()
+		
+	return null
 	
-func send_parent_entity_update():
+func send_parent_entity_update() -> void:
 	if network_replication_manager:
 		network_replication_manager.send_parent_entity_update(get_entity_node())
 	

@@ -1,4 +1,5 @@
 extends "network_logic.gd"
+class_name NetworkTransform
 
 static func write_transform(p_writer : network_writer_const, p_transform : Transform) -> network_writer_const:
 	p_writer.put_vector3(p_transform.origin)
@@ -13,7 +14,7 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	if p_initial_state:
 		pass
 		
-	var transform = _entity_node.get_logic_node().get_transform()
+	var transform : Transform = _entity_node.get_logic_node().get_transform()
 	p_writer = write_transform(p_writer, transform)
 	
 	return p_writer

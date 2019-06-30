@@ -1,4 +1,5 @@
 extends Position3D
+class_name NetworkSpawn
 
 func _enter_tree() -> void:
 	add_to_group("NetworkSpawnGroup")
