@@ -11,8 +11,10 @@ var network_manager : network_manager_const = null
 var entity_manager : entity_manager_const = null
 var max_networked_entities : int = 4096 # Default
 
-# List of all the packed scenes which can be transferred over the network
-# via small spawn commands
+"""
+List of all the packed scenes which can be transferred over the network
+via small spawn commands
+"""
 var networked_scenes : Array = []
 
 enum {
@@ -159,7 +161,7 @@ func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity"
 		
 	
 func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_PEER_ID, p_transform : Transform = Transform()) -> Node:
-	var instance = instantiate_entity(p_packed_scene, p_name, p_master_id)
+	var instance : Node = instantiate_entity(p_packed_scene, p_name, p_master_id)
 	if instance:
 		instance.set_global_transform(p_transform)
 	
@@ -175,8 +177,7 @@ func register_network_instance_id(p_network_instance_id : int, p_node : Node) ->
 	network_instance_ids[p_network_instance_id] = p_node
 	
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
-	var erase_result = network_instance_ids.erase(p_network_instance_id)
-	if erase_result != OK:
+	if network_instance_ids.erase(p_network_instance_id) == false:
 		printerr("Could not unregister network instance id " + str(p_network_instance_id))
 	
 func get_network_instance_identity(p_network_instance_id : int) -> Node:
@@ -199,7 +200,7 @@ func create_entity_spawn_command(p_entity : entity_const) -> network_writer_cons
 	network_writer = write_entity_parent_id(p_entity, network_writer)
 	network_writer = write_entity_network_master(p_entity, network_writer)
 	
-	var entity_state = p_entity.network_identity_node.get_state(network_writer_const.new(), true)
+	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(network_writer_const.new(), true)
 	network_writer.put_writer(entity_state)
 
 	return network_writer
@@ -208,7 +209,7 @@ func create_entity_update_command(p_entity : entity_const) -> network_writer_con
 	var network_writer : network_writer_const = network_writer_const.new()
 
 	network_writer = write_entity_instance_id(p_entity, network_writer)
-	var entity_state = p_entity.network_identity_node.get_state(network_writer_const.new(), false)
+	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(network_writer_const.new(), false)
 	network_writer.put_u32(entity_state.get_size())
 	network_writer.put_writer(entity_state)
 
@@ -281,7 +282,7 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
 			entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
 		
-	var network_writer = network_writer_const.new()
+	var network_writer : network_writer_const = network_writer_const.new()
 	for entity_spawn_writer in entity_spawn_writers:
 		network_writer.put_writer(entity_spawn_writer)
 		
@@ -289,15 +290,15 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		var synced_peers = []
+		var synced_peers : Array = []
 		if p_id == NetworkManager.SERVER_PEER_ID:
 			synced_peers = network_manager.get_synced_peers()
 		else:
 			synced_peers = [NetworkManager.SERVER_PEER_ID]
 			
 		for synced_peer in synced_peers:
-			var reliable_network_writer = network_writer_const.new()
-			var unreliable_network_writer = network_writer_const.new()
+			var reliable_network_writer : network_writer_const = network_writer_const.new()
+			var unreliable_network_writer : network_writer_const = network_writer_const.new()
 			
 			if p_id == NetworkManager.SERVER_PEER_ID:
 				# Spawn commands
@@ -372,9 +373,9 @@ func decode_entity_update_command(p_id : int, p_network_reader : network_reader_
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	
-	var entity_state_size = p_network_reader.get_u32()
+	var entity_state_size : int = p_network_reader.get_u32()
 	if network_instance_ids.has(instance_id):
-		var network_identity_instance = network_instance_ids[instance_id]
+		var network_identity_instance : Node = network_instance_ids[instance_id]
 		if (network_manager.is_server() and network_identity_instance.get_network_master() == p_id) or p_id == NetworkManager.SERVER_PEER_ID:
 			network_identity_instance.update_state(p_network_reader, false)
 	else:
@@ -419,7 +420,7 @@ func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_c
 	var entity_instance : entity_const = packed_scene.instance()
 	
 	# If this entity has a parent, try to find it
-	var parent_instance = null
+	var parent_instance : Node = null
 	if parent_id > NULL_NETWORK_INSTANCE_ID:
 		var network_identity : Node = get_network_instance_identity(parent_id)
 		if network_identity:
@@ -481,7 +482,7 @@ func decode_entity_set_parent_command(p_id : int, p_network_reader : network_rea
 	if network_instance_ids.has(instance_id):
 		var entity_instance : Node = network_instance_ids[instance_id].get_entity_node()
 		# If this entity has a parent, try to find it
-		var parent_instance = null
+		var parent_instance : Node = null
 		
 		var network_identity : Node = get_network_instance_identity(parent_id)
 		if network_identity:
@@ -514,7 +515,7 @@ func _ready() -> void:
 	if(!ProjectSettings.has_setting("network/config/networked_scenes")):
 		ProjectSettings.set_setting("network/config/networked_scenes", PoolStringArray())
 		
-	var networked_objects_property_info = {
+	var networked_objects_property_info : Dictionary = {
 		"name": "network/config/networked_scenes",
 		"type": TYPE_STRING_ARRAY,
 		"hint": PROPERTY_HINT_FILE,
@@ -530,7 +531,7 @@ func _ready() -> void:
 		network_manager = get_node("/root/NetworkManager")
 		entity_manager = get_node("/root/EntityManager")
 		
-		var connect_result = OK
+		var connect_result : int = OK
 		
 		connect_result = entity_manager.connect("entity_added", self, "_entity_added")
 		if connect_result != OK:

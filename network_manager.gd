@@ -125,7 +125,7 @@ func close_connection() -> void:
 
 func get_current_peer_id() -> int:
 	if has_active_peer():
-		var id = get_tree().multiplayer.get_network_unique_id()
+		var id : int = get_tree().multiplayer.get_network_unique_id()
 		return id
 	else:
 		return SERVER_PEER_ID
@@ -175,8 +175,7 @@ sync func unregister_peer(p_id : int) -> void:
 	
 	peers.erase(p_id)
 	if is_server():
-		var erase_result = peer_server_data.erase(p_id)
-		if erase_result != OK:
+		if peer_server_data.erase(p_id) == false:
 			printerr("Could not erase peer server data!")
 	
 	emit_signal("peer_unregistered", p_id)
@@ -300,7 +299,7 @@ func server_kick_player(p_id : int) -> void:
 
 func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) -> void:
 	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
-	var send_bytes_result = get_tree().multiplayer.send_bytes(p_buffer, p_id)
+	var send_bytes_result : int = get_tree().multiplayer.send_bytes(p_buffer, p_id)
 	if send_bytes_result != OK:
 		printerr("send bytes error :" + str(send_bytes_result))
 		
@@ -316,7 +315,7 @@ func _process(p_delta : float) -> void:
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:
-		var connect_result = OK
+		var connect_result : int = OK
 		
 		#Server and Clients
 		connect_result = get_tree().multiplayer.connect("network_peer_connected", self, "_network_peer_connected")
