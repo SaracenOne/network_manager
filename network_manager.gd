@@ -118,8 +118,7 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	
 func close_connection() -> void:
 	if has_active_peer():
-		var net : NetworkedMultiplayerPeer = get_tree().multiplayer.get_network_peer()
-		net.close_connection()
+		get_tree().multiplayer.set_network_peer(null)
 		
 		client_state = validation_state_enum.VALIDATION_STATE_NONE
 
@@ -342,3 +341,5 @@ func _ready() -> void:
 			printerr("NetworkManager: network_peer_packet could not be connected!")
 		
 		entity_root_node_path = NodePath(ProjectSettings.get_setting("network/config/entity_root_node"))
+		
+		get_tree().multiplayer.set_allow_object_decoding(false)
