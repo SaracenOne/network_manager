@@ -1,7 +1,7 @@
 extends Node
 tool
 
-const SERVER_PEER_ID : int = 1
+const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
 
 enum validation_state_enum {
@@ -49,7 +49,7 @@ func _network_peer_disconnected(p_id : int) -> void:
 #Clients
 func _connected_to_server() -> void:
 	print("Connected to server...")
-	rpc_id(SERVER_PEER_ID, "register_peer", get_tree().multiplayer.get_network_unique_id())
+	rpc_id(SERVER_MASTER_PEER_ID, "register_peer", get_tree().multiplayer.get_network_unique_id())
 	emit_signal("connection_succeeded")
 
 func _connection_failed() -> void:
@@ -71,7 +71,7 @@ func is_server() -> bool:
 	return has_active_peer() == false or get_tree().multiplayer.is_network_server()
 	
 func is_rpc_sender_id_server() -> bool:
-	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_PEER_ID
+	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_MASTER_PEER_ID
 
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	if has_active_peer():
@@ -127,7 +127,7 @@ func get_current_peer_id() -> int:
 		var id : int = get_tree().multiplayer.get_network_unique_id()
 		return id
 	else:
-		return SERVER_PEER_ID
+		return SERVER_MASTER_PEER_ID
 
 func get_peer_list() -> Array:
 	return peers
