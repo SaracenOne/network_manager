@@ -375,7 +375,7 @@ func get_packed_scene_for_scene_id(p_scene_id : int) -> PackedScene:
 	
 	return packed_scene
 	
-func decode_entity_update_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_update_command: eof!")
 		return null
@@ -388,15 +388,15 @@ func decode_entity_update_command(p_id : int, p_network_reader : network_reader_
 	var entity_state_size : int = p_network_reader.get_u32()
 	if network_instance_ids.has(instance_id):
 		var network_identity_instance : Node = network_instance_ids[instance_id]
-		if (network_manager.is_server() and network_identity_instance.get_network_master() == p_id) or p_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		if (network_manager.is_server() and network_identity_instance.get_network_master() == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
 			network_identity_instance.update_state(p_network_reader, false)
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
 	
 	return p_network_reader
 
-func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
-	if p_id != NetworkManager.SERVER_MASTER_PEER_ID:
+func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
 		ErrorManager.error("decode_entity_spawn_command: recieved spawn command from non server ID!")
 		return null
 		
@@ -452,8 +452,8 @@ func decode_entity_spawn_command(p_id : int, p_network_reader : network_reader_c
 	
 	return p_network_reader
 	
-func decode_entity_destroy_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
-	if p_id != NetworkManager.SERVER_MASTER_PEER_ID:
+func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
 		ErrorManager.error("decode_entity_destroy_command: recieved destroy command from non server ID!")
 		return null
 	
@@ -475,8 +475,8 @@ func decode_entity_destroy_command(p_id : int, p_network_reader : network_reader
 	
 	return p_network_reader
 	
-func decode_entity_set_parent_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
-	if p_id != NetworkManager.SERVER_MASTER_PEER_ID:
+func decode_entity_set_parent_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
 		ErrorManager.error("decode_entity_set_parent_command: recieved set_parent command from non server ID!")
 		return null
 	
@@ -509,8 +509,8 @@ func decode_entity_set_parent_command(p_id : int, p_network_reader : network_rea
 	
 	return p_network_reader
 	
-func decode_entity_transfer_master_command(p_id : int, p_network_reader : network_reader_const) -> network_reader_const:
-	if p_id != NetworkManager.SERVER_MASTER_PEER_ID:
+func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
 		ErrorManager.error("decode_entity_transfer_master_command: recieved transfer master command from non server ID!")
 		return null
 		
@@ -543,22 +543,22 @@ func decode_entity_transfer_master_command(p_id : int, p_network_reader : networ
 	
 	return p_network_reader
 	
-func decode_replication_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
+func decode_replication_buffer(p_packet_sender_id : int, p_buffer : PoolByteArray) -> void:
 	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
 	
 	while network_reader and network_reader.is_eof() == false:
 		var command = network_reader.get_u8()
 		match command:
 			UPDATE_ENTITY_COMMAND:
-				network_reader = decode_entity_update_command(p_id, network_reader)
+				network_reader = decode_entity_update_command(p_packet_sender_id, network_reader)
 			SPAWN_ENTITY_COMMAND:
-				network_reader = decode_entity_spawn_command(p_id, network_reader)
+				network_reader = decode_entity_spawn_command(p_packet_sender_id, network_reader)
 			DESTROY_ENTITY_COMMAND:
-				network_reader = decode_entity_destroy_command(p_id, network_reader)
+				network_reader = decode_entity_destroy_command(p_packet_sender_id, network_reader)
 			SET_PARENT_ENTITY_COMMAND:
-				network_reader = decode_entity_set_parent_command(p_id, network_reader)
+				network_reader = decode_entity_set_parent_command(p_packet_sender_id, network_reader)
 			TRANSFER_ENTITY_MASTER_COMMAND:
-				network_reader = decode_entity_transfer_master_command(p_id, network_reader)
+				network_reader = decode_entity_transfer_master_command(p_packet_sender_id, network_reader)
 			_:
 				break
 	
