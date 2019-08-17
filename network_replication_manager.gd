@@ -441,10 +441,7 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 			ErrorManager.error("decode_entity_spawn_command: could not find parent entity!")
 	
 	entity_instance.set_name("Entity")
-	if network_manager.peers.has(network_master):
-		entity_instance.set_network_master(network_master)
-	else:
-		ErrorManager.error("decode_entity_spawn_command: could not find master id!")
+	entity_instance.set_network_master(network_master)
 	
 	entity_instance = add_entity_instance(entity_instance, parent_instance)
 	entity_instance.network_identity_node.set_network_instance_id(instance_id)
@@ -534,10 +531,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 	
 	if network_instance_ids.has(instance_id):
 		var entity_instance : Node = network_instance_ids[instance_id].get_entity_node()
-		if network_manager.peers.has(network_master):
-			entity_instance.set_network_master(network_master)
-		else:
-			ErrorManager.error("decode_entity_transfer_master_command: could not find master id!")
+		entity_instance.set_network_master(network_master)
 	else:
 		ErrorManager.error("Attempted to transfer master of invalid node")
 	
