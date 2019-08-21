@@ -4,6 +4,10 @@ tool
 const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
 
+const PACKET_SEND_RATE = 0.0
+var time_passed = 0.0
+var time_until_next_send = 0.0
+
 enum validation_state_enum {
 	VALIDATION_STATE_NONE,
 	VALIDATION_STATE_CONNECTION,
@@ -86,6 +90,9 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 		print("Cannot create a server on port " + str(p_port) + "!")
 		return false
 		
+	time_passed = 0.0
+	time_until_next_send = 0.0
+		
 	get_tree().multiplayer.set_network_peer(net)
 	
 	if server_dedicated:
@@ -110,6 +117,9 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	if net.create_client(p_ip, p_port) != OK:
 		print("Cannot create a client on ip " + p_ip + " & port " + str(p_port) + "!")
 		return false
+		
+	time_passed = 0.0
+	time_until_next_send = 0.0
 
 	get_tree().multiplayer.set_network_peer(net)
 
@@ -304,13 +314,17 @@ func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) ->
 		
 func _process(p_delta : float) -> void:
 	if Engine.is_editor_hint() == false:
+		time_passed += p_delta
+		
 		if is_server():
 			for peer in get_peer_list():
 				peer_server_data[peer].time_since_last_update += p_delta
 				
 		if has_active_peer():
 			if is_server() or client_state == validation_state_enum.VALIDATION_STATE_SYNCED:
-				emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
+				if time_passed > time_until_next_send:
+					emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
+					time_until_next_send = time_passed + PACKET_SEND_RATE
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:
