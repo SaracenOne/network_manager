@@ -179,7 +179,7 @@ func register_network_instance_id(p_network_instance_id : int, p_node : Node) ->
 	
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
 	if network_instance_ids.erase(p_network_instance_id) == false:
-		printerr("Could not unregister network instance id " + str(p_network_instance_id))
+		ErrorManager.error("Could not unregister network instance id: {network_instance_id}".format({"network_instance_id":str(p_network_instance_id)}))
 	
 func get_network_instance_identity(p_network_instance_id : int) -> Node:
 	if network_instance_ids.has(p_network_instance_id):
@@ -284,7 +284,7 @@ func get_network_scene_id_from_path(p_path : String) -> int:
 		else:
 			return network_scene_id
 		
-	ErrorManager.error("Could not find network scene id for " + path)
+	ErrorManager.error("Could not find network scene id for {path}".format({"path":path}))
 	return -1
 	
 func create_spawn_state_for_new_client(p_network_id : int) -> void:

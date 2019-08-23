@@ -76,4 +76,5 @@ func _ready() -> void:
 			set_network_scene_id(network_replication_manager.get_network_scene_id_from_path(get_entity_node().filename))
 			
 			get_entity_node().add_to_group("NetworkedEntities")
-			get_entity_node().connect("tree_exited", self, "on_exit")
+			if get_entity_node().connect("tree_exited", self, "on_exit") != OK:
+				ErrorManager.error("Could not connect tree_exited!")

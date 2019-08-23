@@ -44,10 +44,10 @@ signal network_peer_packet()
 #Server
 func _network_peer_connected(p_id : int) -> void:
 	peer_server_data[p_id] = {"validation_state":validation_state_enum.VALIDATION_STATE_NONE, "time_since_last_update":0.0}
-	print("Network peer " + str(p_id) + " connected!")
+	print("Network peer {id} connected!".format({"id":str(p_id)}))
 
 func _network_peer_disconnected(p_id : int) -> void:
-	print("Network peer " + str(p_id) + " disconnected!")
+	print("Network peer {id} disconnected!".format({"id":str(p_id)}))
 	rpc("unregister_peer", p_id)
 
 #Clients
@@ -87,7 +87,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
 	if (net.create_server(p_port, max_players) != OK):
-		print("Cannot create a server on port " + str(p_port) + "!")
+		print("Cannot create a server on port {port}!".format({"port":str(p_port)}))
 		return false
 		
 	time_passed = 0.0
@@ -96,8 +96,8 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	get_tree().multiplayer.set_network_peer(net)
 	
 	if server_dedicated:
-		print("Server hosted on port " + str(p_port) + ".")
-		print("Max clients: " + str(max_players))
+		print("Server hosted on port {port}".format({"port":str(p_port)}))
+		print("Max clients: {max_players}".format({"port":str(max_players)}))
 	
 	emit_signal("game_hosted")
 	
@@ -115,7 +115,8 @@ func join_game(p_ip : String, p_port : int) -> bool:
 		return false
 
 	if net.create_client(p_ip, p_port) != OK:
-		print("Cannot create a client on ip " + p_ip + " & port " + str(p_port) + "!")
+		print("Cannot create a client on ip {ip} & port {port}!".format(
+		{"ip":p_ip, "port":str(p_port)}))
 		return false
 		
 	time_passed = 0.0
@@ -123,7 +124,8 @@ func join_game(p_ip : String, p_port : int) -> bool:
 
 	get_tree().multiplayer.set_network_peer(net)
 
-	print("Connecting to " + p_ip + ":" + str(p_port) + "..")
+	print("Connecting to {ip} : {port}!".format(
+		{"ip":p_ip, "port":str(p_port)}))
 	return true
 	
 func close_connection() -> void:
@@ -160,7 +162,8 @@ remote func register_peer(p_id : int) -> void:
 	
 	if is_server():
 		if !peer_is_connected(rpc_sender_id):
-			printerr("register_peer: peer " + str(rpc_sender_id) + " is invalid!")
+			printerr("register_peer: peer {rpc_sender_id} is invalid!".format(
+			{"rpc_sender_id":str(rpc_sender_id)}))
 			return
 			
 		rpc_id(rpc_sender_id, "register_peer", 1) # Register server player to new client
@@ -310,7 +313,7 @@ func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) ->
 	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
 	var send_bytes_result : int = get_tree().multiplayer.send_bytes(p_buffer, p_id)
 	if send_bytes_result != OK:
-		printerr("send bytes error :" + str(send_bytes_result))
+		ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 		
 func _process(p_delta : float) -> void:
 	if Engine.is_editor_hint() == false:
