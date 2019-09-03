@@ -1,15 +1,17 @@
 extends Node
 tool
 
-const network_manager_const = preload("res://addons/network_manager/network_manager.gd")
-const entity_manager_const = preload("res://addons/entity_manager/entity_manager.gd")
 const entity_const = preload("res://addons/entity_manager/entity.gd")
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 
-var network_manager : network_manager_const = null
-var entity_manager : entity_manager_const = null
 var max_networked_entities : int = 4096 # Default
+
+var signal_table : Array = [
+	{"singleton":"EntityManager", "signal":"entity_added", "method":"_entity_added"},
+	{"singleton":"EntityManager", "signal":"entity_removed", "method":"_entity_removed"},
+	{"singleton":"NetworkManager", "signal":"network_process", "method":"_network_manager_process"},
+]
 
 """
 List of all the packed scenes which can be transferred over the network
@@ -90,7 +92,7 @@ var network_entities_pending_reparenting : Array = []
 var network_entities_pending_destruction : Array = []
 
 func _entity_added(p_entity : entity_const) -> void:
-	if network_manager.is_server():
+	if NetworkManager.is_server():
 		if p_entity.network_identity_node != null:
 			if network_entities_pending_spawn.has(p_entity):
 				ErrorManager.error("Attempted to spawn two identical network entities")
@@ -99,7 +101,7 @@ func _entity_added(p_entity : entity_const) -> void:
 		
 
 func _entity_removed(p_entity : entity_const) -> void:
-	if network_manager.is_server():
+	if NetworkManager.is_server():
 		if p_entity.network_identity_node != null:
 			if network_entities_pending_spawn.has(p_entity):
 				network_entities_pending_spawn.remove(network_entities_pending_spawn.find(p_entity))
@@ -118,7 +120,7 @@ func get_entity_root_node() -> Node:
 	return get_tree().get_root()
 
 func send_parent_entity_update(p_instance : Node) -> void:
-	if network_manager.is_server():
+	if NetworkManager.is_server():
 		if p_instance.network_identity_node != null:
 			if network_entities_pending_reparenting.has(p_instance) == false:
 				network_entities_pending_reparenting.append(p_instance)
@@ -149,19 +151,19 @@ func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> void
 	if p_instance.logic_node:
 		p_instance.logic_node.set_global_transform(last_global_transform)
 	
-func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_MASTER_PEER_ID) -> Node:
+func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = p_packed_scene.instance()
 	instance.set_name(p_name)
 	instance.set_network_master(p_master_id)
 	
 	return instance
 	
-func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_MASTER_PEER_ID) -> Node:
+func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = create_entity_instance(p_packed_scene, p_name, p_master_id)
 	return add_entity_instance(instance)
 		
 	
-func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = network_manager_const.SERVER_MASTER_PEER_ID, p_transform : Transform = Transform()) -> Node:
+func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID, p_transform : Transform = Transform()) -> Node:
 	var instance : Node = instantiate_entity(p_packed_scene, p_name, p_master_id)
 	if instance:
 		instance.set_global_transform(p_transform)
@@ -304,7 +306,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		var synced_peers : Array = []
 		if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
-			synced_peers = network_manager.get_synced_peers()
+			synced_peers = NetworkManager.get_synced_peers()
 		else:
 			synced_peers = [NetworkManager.SERVER_MASTER_PEER_ID]
 			
@@ -353,9 +355,9 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				unreliable_network_writer.put_writer(entity_update_writer)
 					
 			if reliable_network_writer.get_size() > 0:
-				network_manager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+				NetworkManager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
 			if unreliable_network_writer.get_size() > 0:
-				network_manager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
+				NetworkManager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 			
 		# Flush the pending spawn, parenting, and destruction queues
 		network_entities_pending_spawn = []
@@ -388,7 +390,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 	var entity_state_size : int = p_network_reader.get_u32()
 	if network_instance_ids.has(instance_id):
 		var network_identity_instance : Node = network_instance_ids[instance_id]
-		if (network_manager.is_server() and network_identity_instance.get_network_master() == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		if (NetworkManager.is_server() and network_identity_instance.get_network_master() == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
 			network_identity_instance.update_state(p_network_reader, false)
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
@@ -572,23 +574,9 @@ func _ready() -> void:
 	if(!ProjectSettings.has_setting("network/config/max_networked_entities")):
 		ProjectSettings.set_setting("network/config/max_networked_entities", max_networked_entities)
 	
-	if Engine.is_editor_hint() == false and has_node("/root/NetworkManager") and has_node("/root/EntityManager"):
-		network_manager = get_node("/root/NetworkManager")
-		entity_manager = get_node("/root/EntityManager")
-		
-		var connect_result : int = OK
-		
-		connect_result = entity_manager.connect("entity_added", self, "_entity_added")
-		if connect_result != OK:
-			printerr("NetworkReplicationManager: entity_added could not be connected")
-		connect_result = entity_manager.connect("entity_removed", self, "_entity_removed")
-		if connect_result != OK:
-			printerr("NetworkReplicationManager: entity_removed could not be connected")
-		
-		connect_result = network_manager.connect("network_process", self, "_network_manager_process")
-		if connect_result != OK:
-			printerr("NetworkReplicationManager: network_process could not be connected")
-		
+	if Engine.is_editor_hint() == false:
+		ConnectionUtil.connect_signal_table(signal_table, self)
+					
 		var network_scenes_config = ProjectSettings.get_setting("network/config/networked_scenes")
 		if typeof(network_scenes_config) != TYPE_STRING_ARRAY:
 			networked_scenes = []
