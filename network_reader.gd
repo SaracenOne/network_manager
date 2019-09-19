@@ -3,7 +3,7 @@ tool
 
 const entity_const = preload("res://addons/entity_manager/entity.gd")
 
-var stream_peer_buffer = null
+var stream_peer_buffer : StreamPeerBuffer = null
 
 func _init(p_buffer : PoolByteArray) -> void:
 	assert(typeof(p_buffer) == TYPE_RAW_ARRAY)

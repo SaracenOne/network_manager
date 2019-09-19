@@ -1,7 +1,7 @@
 extends Reference
 tool
 
-var stream_peer_buffer = StreamPeerBuffer.new()
+var stream_peer_buffer : StreamPeerBuffer = StreamPeerBuffer.new()
 
 func get_raw_data() -> PoolByteArray:
 	return stream_peer_buffer.data_array
