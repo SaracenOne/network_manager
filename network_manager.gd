@@ -26,7 +26,7 @@ enum validation_state_enum {
 	VALIDATION_STATE_SYNCED
 }
 
-var server_is_disconnected = false
+var server_is_disconnected = true
 
 # Server
 var host_port : int = 7777 # Configuration
@@ -119,6 +119,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	time_until_next_send = 0.0
 		
 	get_tree().multiplayer.set_network_peer(net)
+	get_tree().multiplayer.set_allow_object_decoding(false)
 	
 	if server_dedicated:
 		print("Server hosted on port {port}".format({"port":str(active_port)}))
@@ -153,6 +154,7 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	time_until_next_send = 0.0
 
 	get_tree().multiplayer.set_network_peer(net)
+	get_tree().multiplayer.set_allow_object_decoding(false)
 
 	print("Connecting to {ip} : {port}!".format(
 		{"ip":p_ip, "port":str(p_port)}))
@@ -250,8 +252,11 @@ func peer_is_connected(p_id : int) -> bool:
 	return false
 	
 func get_connected_peers() -> PoolIntArray:
-	var connected_peers : PoolIntArray = get_tree().multiplayer.get_network_connected_peers()
-	return connected_peers
+	if get_tree().multiplayer.has_network_peer():
+		var connected_peers : PoolIntArray = get_tree().multiplayer.get_network_connected_peers()
+		return connected_peers
+	else:
+		return PoolIntArray()
 	
 func get_synced_peers() -> Array:
 	var valid_peers : Array = []
@@ -375,7 +380,6 @@ func _process(p_delta : float) -> void:
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:
 		entity_root_node_path = NodePath(ProjectSettings.get_setting("network/config/entity_root_node"))
-		get_tree().multiplayer.set_allow_object_decoding(false)
 		
 		for current_signal in multiplayer_signal_table:
 			if get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method) != OK:
