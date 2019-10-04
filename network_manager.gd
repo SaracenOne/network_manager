@@ -1,6 +1,7 @@
 extends Node
 tool
 
+
 const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
 
@@ -57,6 +58,19 @@ signal connection_succeeded()
 signal server_disconnected()
 signal network_peer_packet()
 
+var networked_scene_paths : PoolStringArray = PoolStringArray()
+var networked_scenes : Array = []
+
+# TODO: thread this
+func cache_networked_scenes():
+	networked_scenes.resize(networked_scene_paths.size())
+	
+	for i in range(0, networked_scene_paths.size()):
+		var packed_scene : PackedScene = null
+		
+		if ResourceLoader.exists(networked_scene_paths[i]):
+			packed_scene = ResourceLoader.load(networked_scene_paths[i])
+	
 #Server
 func _network_peer_connected(p_id : int) -> void:
 	peer_server_data[p_id] = {"validation_state":validation_state_enum.VALIDATION_STATE_NONE, "time_since_last_update":0.0}
@@ -385,3 +399,5 @@ func _ready() -> void:
 			if get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method) != OK:
 				printerr("NetworkManager: {signal} could not be connected!".format(
 					{"signal":str(current_signal.signal)}))
+					
+		cache_networked_scenes()
