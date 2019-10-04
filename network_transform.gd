@@ -18,13 +18,14 @@ static func write_transform(p_writer : network_writer_const, p_transform : Trans
 	return p_writer
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	if _entity_node.get_logic_node() == null:
-		_entity_node._ready()
+	var entity_node : Node = get_entity_node()
+	if entity_node.get_logic_node() == null:
+		entity_node._ready()
 		
 	if p_initial_state:
 		pass
 		
-	var transform : Transform = _entity_node.get_logic_node().get_transform()
+	var transform : Transform = entity_node.get_logic_node().get_transform()
 	p_writer = write_transform(p_writer, transform)
 	
 	return p_writer
@@ -33,15 +34,16 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	var origin = Vector3(p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
 	var rotation = Quat(p_reader.get_float(), p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
 	
-	if is_network_master() == false:
-		target_origin = origin
-		target_rotation = rotation
-		
-		if p_initial_state or origin_interpolation_factor == 0.0:
-			var current_transform : Transform = Transform(Basis(rotation), origin)
-			current_origin = current_transform.origin
-			current_rotation = Quat(current_transform.basis)
-			_entity_node.get_logic_node().set_transform(current_transform)
+	target_origin = origin
+	target_rotation = rotation
+	
+	if p_initial_state or origin_interpolation_factor == 0.0:
+		var current_transform : Transform = Transform(Basis(rotation), origin)
+		current_origin = current_transform.origin
+		current_rotation = Quat(current_transform.basis)
+		var entity_node : Node = get_entity_node()
+		if entity_node:
+			entity_node.get_logic_node().set_transform(current_transform)
 	
 	return p_reader
 	
@@ -63,4 +65,6 @@ func _process(p_delta : float) -> void:
 			current_origin = target_origin
 			current_rotation = target_rotation
 			
-		_entity_node.get_logic_node().set_transform(Transform(Basis(current_rotation), current_origin))
+		var entity_node : Node = get_entity_node()
+		if entity_node:
+			entity_node.get_logic_node().set_transform(Transform(Basis(current_rotation), current_origin))

@@ -16,7 +16,10 @@ func get_size() -> int:
 	return stream_peer_buffer.get_size()
 
 func seek(p_position : int) -> void:
-	stream_peer_buffer.seek(p_position)
+	if p_position > get_size():
+		ErrorManager.error("Tried to seek beyond size of buffer!")
+	else:
+		stream_peer_buffer.seek(p_position)
 
 func put_data(p_data : PoolByteArray) -> void:
 	stream_peer_buffer.put_data(p_data)

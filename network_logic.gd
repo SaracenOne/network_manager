@@ -23,8 +23,9 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	return p_reader
 
 func destroy_entity() -> void:
-	if _entity_node == null:
+	var entity_node : Node = get_entity_node()
+	if entity_node == null:
 		printerr("Entity node could not be found")
 		
-	_entity_node.queue_free()
-	_entity_node.get_parent().remove_child(_entity_node)
+	entity_node.queue_free()
+	entity_node.get_parent().remove_child(entity_node)

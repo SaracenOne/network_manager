@@ -13,6 +13,18 @@ var signal_table : Array = [
 	{"singleton":"NetworkManager", "signal":"network_process", "method":"_network_manager_process"},
 ]
 
+const scene_tree_execution_table_const = preload("scene_tree_execution_table.gd")
+var scene_tree_execution_table : Reference = scene_tree_execution_table_const.new()
+
+func scene_tree_execution_command(p_command : int, p_entity_instance : Node, p_parent_instance : Node):
+	var parent_instance : Node = null
+	if p_parent_instance == null:
+		parent_instance = get_entity_root_node()
+	else:
+		parent_instance = p_parent_instance
+	
+	scene_tree_execution_table.scene_tree_execution_command(p_command, p_entity_instance, parent_instance)
+
 """
 List of all the packed scenes which can be transferred over the network
 via small spawn commands
@@ -36,14 +48,15 @@ var next_network_instance_id : int = FIRST_NETWORK_INSTANCE_ID
 var network_instance_ids : Dictionary = {}
 
 static func write_entity_scene_id(p_entity : entity_const, p_networked_scenes : Array, p_writer : network_writer_const) -> network_writer_const:
+	var network_identity_node = p_entity.get_network_identity_node()
 	if p_networked_scenes.size() > 0xff:
-		p_writer.put_u16(p_entity.network_identity_node.network_scene_id)
+		p_writer.put_u16(network_identity_node.network_scene_id)
 	elif p_networked_scenes.size() > 0xffff:
-		p_writer.put_u32(p_entity.network_identity_node.network_scene_id)
+		p_writer.put_u32(network_identity_node.network_scene_id)
 	elif p_networked_scenes.size() > 0xffffffff:
-		p_writer.put_u64(p_entity.network_identity_node.network_scene_id)
+		p_writer.put_u64(network_identity_node.network_scene_id)
 	else:
-		p_writer.put_u8(p_entity.network_identity_node.network_scene_id)
+		p_writer.put_u8(network_identity_node.network_scene_id)
 		
 	return p_writer
 	
@@ -58,7 +71,7 @@ static func read_entity_scene_id(p_reader : network_reader_const, p_networked_sc
 		return p_reader.get_u8()
 		
 static func write_entity_instance_id(p_entity : entity_const, p_writer : network_writer_const) -> network_writer_const:
-	p_writer.put_u32(p_entity.network_identity_node.network_instance_id)
+	p_writer.put_u32(p_entity.get_network_identity_node().network_instance_id)
 		
 	return p_writer
 	
@@ -67,7 +80,7 @@ static func read_entity_instance_id(p_reader : network_reader_const) -> int:
 	
 static func write_entity_parent_id(p_entity : entity_const, p_writer : network_writer_const) -> network_writer_const:
 	if p_entity.entity_parent:
-		p_writer.put_u32(p_entity.entity_parent.network_identity_node.network_instance_id)
+		p_writer.put_u32(p_entity.entity_parent.get_network_identity_node().network_instance_id)
 	else:
 		p_writer.put_u32(NULL_NETWORK_INSTANCE_ID)
 		
@@ -93,16 +106,15 @@ var network_entities_pending_destruction : Array = []
 
 func _entity_added(p_entity : entity_const) -> void:
 	if NetworkManager.is_server():
-		if p_entity.network_identity_node != null:
+		if p_entity.get_network_identity_node() != null:
 			if network_entities_pending_spawn.has(p_entity):
 				ErrorManager.error("Attempted to spawn two identical network entities")
 				
 			network_entities_pending_spawn.append(p_entity)
 		
-
 func _entity_removed(p_entity : entity_const) -> void:
 	if NetworkManager.is_server():
-		if p_entity.network_identity_node != null:
+		if p_entity.get_network_identity_node() != null:
 			if network_entities_pending_spawn.has(p_entity):
 				network_entities_pending_spawn.remove(network_entities_pending_spawn.find(p_entity))
 			else:
@@ -121,35 +133,9 @@ func get_entity_root_node() -> Node:
 
 func send_parent_entity_update(p_instance : Node) -> void:
 	if NetworkManager.is_server():
-		if p_instance.network_identity_node != null:
+		if p_instance.get_network_identity_node() != null:
 			if network_entities_pending_reparenting.has(p_instance) == false:
 				network_entities_pending_reparenting.append(p_instance)
-
-func add_entity_instance(p_instance : Node, p_parent : Node = null) -> Node:
-	if p_parent:
-		p_parent.add_child(p_instance)
-	else:
-		get_entity_root_node().add_child(p_instance)
-	
-	return p_instance
-	
-func reparent_entity_instance(p_instance : Node, p_parent : Node = null) -> void:
-	if !p_instance.is_inside_tree():
-		ErrorManager.error("reparent_entity_instance: entity not inside tree!")
-		
-	var last_global_transform : Transform = Transform()
-	if p_instance.logic_node:
-		last_global_transform = p_instance.logic_node.get_global_transform()
-		
-	p_instance.get_parent().remove_child(p_instance)
-	
-	if p_parent:
-		p_parent.add_child(p_instance)
-	else:
-		get_entity_root_node().add_child(p_instance)
-		
-	if p_instance.logic_node:
-		p_instance.logic_node.set_global_transform(last_global_transform)
 	
 func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = p_packed_scene.instance()
@@ -160,7 +146,9 @@ func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Ent
 	
 func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = create_entity_instance(p_packed_scene, p_name, p_master_id)
-	return add_entity_instance(instance)
+	scene_tree_execution_command(scene_tree_execution_table_const.ADD_ENTITY, instance, null)
+	
+	return instance
 		
 	
 func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID, p_transform : Transform = Transform()) -> Node:
@@ -203,7 +191,7 @@ func create_entity_spawn_command(p_entity : entity_const) -> network_writer_cons
 	network_writer = write_entity_parent_id(p_entity, network_writer)
 	network_writer = write_entity_network_master(p_entity, network_writer)
 	
-	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(network_writer_const.new(), true)
+	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(network_writer_const.new(), true)
 	network_writer.put_writer(entity_state)
 
 	return network_writer
@@ -212,7 +200,7 @@ func create_entity_update_command(p_entity : entity_const) -> network_writer_con
 	var network_writer : network_writer_const = network_writer_const.new()
 
 	network_writer = write_entity_instance_id(p_entity, network_writer)
-	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(network_writer_const.new(), false)
+	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(network_writer_const.new(), false)
 	network_writer.put_u32(entity_state.get_size())
 	network_writer.put_writer(entity_state)
 
@@ -290,6 +278,8 @@ func get_network_scene_id_from_path(p_path : String) -> int:
 	return -1
 	
 func create_spawn_state_for_new_client(p_network_id : int) -> void:
+	scene_tree_execution_table.call("_execute_scene_tree_execution_table_unsafe")
+	
 	var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
 	var entity_spawn_writers : Array = []
 	for entity in entities:
@@ -445,9 +435,10 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 	entity_instance.set_name("Entity")
 	entity_instance.set_network_master(network_master)
 	
-	entity_instance = add_entity_instance(entity_instance, parent_instance)
-	entity_instance.network_identity_node.set_network_instance_id(instance_id)
-	entity_instance.network_identity_node.update_state(p_network_reader, true)
+	var network_identity_node : Node = entity_instance.get_network_identity_node()
+	network_identity_node.set_network_instance_id(instance_id)
+	network_identity_node.update_state(p_network_reader, true)
+	scene_tree_execution_command(scene_tree_execution_table_const.ADD_ENTITY, entity_instance, parent_instance)
 	
 	return p_network_reader
 	
@@ -467,8 +458,7 @@ func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : 
 	
 	if network_instance_ids.has(instance_id):
 		var entity_instance : Node = network_instance_ids[instance_id].get_entity_node()
-		entity_instance.queue_free()
-		entity_instance.get_parent().remove_child(entity_instance.get_entity_node())
+		scene_tree_execution_command(scene_tree_execution_table_const.REMOVE_ENTITY, entity_instance, null)
 	else:
 		ErrorManager.error("Attempted to destroy invalid node")
 	
@@ -502,7 +492,7 @@ func decode_entity_set_parent_command(p_packet_sender_id : int, p_network_reader
 		if network_identity:
 			parent_instance = network_identity.get_entity_node()
 		
-		reparent_entity_instance(entity_instance, parent_instance) 
+		scene_tree_execution_command(scene_tree_execution_table_const.REPARENT_ENTITY, entity_instance, parent_instance)
 	else:
 		ErrorManager.error("Attempted to reparent invalid node")
 	
@@ -542,8 +532,11 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 func decode_replication_buffer(p_packet_sender_id : int, p_buffer : PoolByteArray) -> void:
 	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
 	
-	while network_reader and network_reader.is_eof() == false:
+	while network_reader:
 		var command = network_reader.get_u8()
+		if network_reader.is_eof():
+			break
+			
 		match command:
 			UPDATE_ENTITY_COMMAND:
 				network_reader = decode_entity_update_command(p_packet_sender_id, network_reader)
@@ -557,6 +550,8 @@ func decode_replication_buffer(p_packet_sender_id : int, p_buffer : PoolByteArra
 				network_reader = decode_entity_transfer_master_command(p_packet_sender_id, network_reader)
 			_:
 				break
+	
+	scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
 	
 func _ready() -> void:
 	if(!ProjectSettings.has_setting("network/config/networked_scenes")):
