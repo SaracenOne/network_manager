@@ -151,13 +151,6 @@ func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity"
 	return instance
 		
 	
-func instantiate_entity_transformed(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID, p_transform : Transform = Transform()) -> Node:
-	var instance : Node = instantiate_entity(p_packed_scene, p_name, p_master_id)
-	if instance:
-		instance.set_global_transform(p_transform)
-	
-	return instance
-	
 func get_next_network_id() -> int:
 	# TODO: validate overflow and duplicates
 	var network_instance_id : int = next_network_instance_id
