@@ -5,6 +5,7 @@ const entity_const = preload("res://addons/entity_manager/entity.gd")
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 
+onready var gameroot = get_tree().get_root()
 var max_networked_entities : int = 4096 # Default
 
 var signal_table : Array = [
@@ -129,7 +130,7 @@ func reset_server_instances() -> void:
 """
 
 func get_entity_root_node() -> Node:
-	return get_tree().get_root()
+	return gameroot
 
 func send_parent_entity_update(p_instance : Node) -> void:
 	if NetworkManager.is_server():

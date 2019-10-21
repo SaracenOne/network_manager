@@ -22,7 +22,8 @@ func seek(p_position : int) -> void:
 		stream_peer_buffer.seek(p_position)
 
 func put_data(p_data : PoolByteArray) -> void:
-	stream_peer_buffer.put_data(p_data)
+	if stream_peer_buffer.put_data(p_data) != OK:
+		printerr("put_data returned an error!")
 
 func put_writer(p_writer) -> void:
 	put_data(p_writer.stream_peer_buffer.data_array)
