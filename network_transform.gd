@@ -1,4 +1,4 @@
-extends "network_logic.gd"
+extends NetworkLogic
 class_name NetworkTransform
 
 var target_origin : Vector3 = Vector3()
@@ -31,8 +31,8 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	return p_writer
 	
 func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
-	var origin = Vector3(p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
-	var rotation = Quat(p_reader.get_float(), p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
+	var origin : Vector3 = Vector3(p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
+	var rotation : Quat = Quat(p_reader.get_float(), p_reader.get_float(), p_reader.get_float(), p_reader.get_float())
 	
 	target_origin = origin
 	target_rotation = rotation
@@ -48,7 +48,7 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	return p_reader
 	
 func _process(p_delta : float) -> void:
-	if is_network_master() == false:
+	if is_inside_tree() and !is_network_master():
 		var distance : float = current_origin.distance_to(target_origin)
 		
 		if snap_threshold > 0.0 and distance < snap_threshold:
