@@ -44,6 +44,7 @@ enum {
 
 const NULL_NETWORK_INSTANCE_ID = 0
 const FIRST_NETWORK_INSTANCE_ID = 1
+const LAST_NETWORK_INSTANCE_ID = 4294967295
 
 var next_network_instance_id : int = FIRST_NETWORK_INSTANCE_ID
 var network_instance_ids : Dictionary = {}
@@ -150,15 +151,30 @@ func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity"
 	scene_tree_execution_command(scene_tree_execution_table_const.ADD_ENTITY, instance, null)
 	
 	return instance
-		
 	
 func get_next_network_id() -> int:
-	# TODO: validate overflow and duplicates
 	var network_instance_id : int = next_network_instance_id
 	next_network_instance_id += 1
+	if next_network_instance_id >= LAST_NETWORK_INSTANCE_ID:
+		print("Maximum network instance ids used. Reverting to first")
+		next_network_instance_id = FIRST_NETWORK_INSTANCE_ID
+		
+	# If the instance id is already in use, keep iterating until
+	# we find an unused one
+	while(network_instance_ids.has(network_instance_id)):
+		network_instance_id = next_network_instance_id
+		next_network_instance_id += 1
+		if next_network_instance_id >= LAST_NETWORK_INSTANCE_ID:
+			print("Maximum network instance ids used. Reverting to first")
+			next_network_instance_id = FIRST_NETWORK_INSTANCE_ID
+	
 	return network_instance_id
 	
 func register_network_instance_id(p_network_instance_id : int, p_node : Node) -> void:
+	if network_instance_ids.size() > max_networked_entities:
+		printerr("EXCEEDED MAXIMUM ALLOWED INSTANCE IDS!")
+		return
+	
 	network_instance_ids[p_network_instance_id] = p_node
 	
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
