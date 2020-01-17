@@ -172,16 +172,19 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		var synced_peers : Array = []
-		if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		if p_id == NetworkManager.session_master or p_id == NetworkManager.SERVER_MASTER_PEER_ID:
 			synced_peers = NetworkManager.get_synced_peers()
 		else:
-			synced_peers = [NetworkManager.SERVER_MASTER_PEER_ID]
+			if NetworkManager.is_server_authoritive:
+				synced_peers = [NetworkManager.session_master]
+			else:
+				synced_peers = NetworkManager.get_synced_peers()
 			
 		for synced_peer in synced_peers:
 			var reliable_network_writer : network_writer_const = network_writer_const.new()
 			var unreliable_network_writer : network_writer_const = network_writer_const.new()
 			
-			if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
+			if p_id == NetworkManager.session_master:
 				# Spawn commands
 				var entity_spawn_writers : Array = []
 				for entity in network_entities_pending_spawn:
@@ -229,11 +232,15 @@ func get_packed_scene_for_scene_id(p_scene_id : int) -> PackedScene:
 
 func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
+	var valid_sender_id = false
+
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		valid_sender_id = true
 	
-	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
+	if valid_sender_id == false:
 		ErrorManager.error("decode_entity_spawn_command: recieved spawn command from non server ID!")
 		return null
-		
+	
 	if p_network_reader.is_eof():
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
@@ -286,8 +293,12 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 	
 func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
-	
-	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
+	var valid_sender_id = false
+
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		valid_sender_id = true	
+
+	if valid_sender_id == false:
 		ErrorManager.error("decode_entity_destroy_command: recieved destroy command from non server ID!")
 		return null
 	
@@ -310,8 +321,12 @@ func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : 
 	
 func decode_entity_set_parent_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
-	
-	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
+	var valid_sender_id = false
+
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		valid_sender_id = true	
+
+	if valid_sender_id == false:
 		ErrorManager.error("decode_entity_set_parent_command: recieved set_parent command from non server ID!")
 		return null
 	
@@ -347,7 +362,12 @@ func decode_entity_set_parent_command(p_packet_sender_id : int, p_network_reader
 func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	
-	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
+	var valid_sender_id = false
+
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		valid_sender_id = true	
+
+	if valid_sender_id == false:
 		ErrorManager.error("decode_entity_transfer_master_command: recieved transfer master command from non server ID!")
 		return null
 		
@@ -397,7 +417,12 @@ func decode_voice_command(
 	p_network_reader : network_reader_const
 	) -> network_reader_const:
 		
-	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
+	var valid_sender_id = false
+
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		valid_sender_id = true	
+
+	if valid_sender_id == false:
 		ErrorManager.error("decode_voice_command: recieved voice command from non server ID!")
 		return null
 		

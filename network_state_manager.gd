@@ -45,10 +45,13 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		var synced_peers : Array = []
-		if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
+		if p_id == NetworkManager.session_master or p_id == NetworkManager.SERVER_MASTER_PEER_ID:
 			synced_peers = NetworkManager.get_synced_peers()
 		else:
-			synced_peers = [NetworkManager.SERVER_MASTER_PEER_ID]
+			if NetworkManager.is_server_authoritive:
+				synced_peers = [NetworkManager.session_master]
+			else:
+				synced_peers = NetworkManager.get_synced_peers()
 			
 		for synced_peer in synced_peers:
 			var unreliable_network_writer : network_writer_const = network_writer_const.new()
@@ -89,8 +92,23 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 	var entity_state_size : int = p_network_reader.get_u32()
 	if network_entity_manager.network_instance_ids.has(instance_id):
 		var network_identity_instance : Node = network_entity_manager.network_instance_ids[instance_id]
-		if (NetworkManager.is_server() and network_identity_instance.get_network_master() == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
-			network_identity_instance.update_state(p_network_reader, false)
+		var network_instance_master : int = network_identity_instance.get_network_master()
+		var invalid_sender_id = false
+		if NetworkManager.is_server_authoritive:
+			# Only the server will accept state updates for entities directly and other clients will accept them from the host
+			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+				network_identity_instance.update_state(p_network_reader, false)
+			else:
+				invalid_sender_id = true
+		else:
+			# In a non-authoritive context, everyone is responsible for their own state updates, though the server can override
+			if network_instance_master == p_packet_sender_id or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+				network_identity_instance.update_state(p_network_reader, false)
+			else:
+				invalid_sender_id = true
+			
+		if invalid_sender_id == true:
+			ErrorManager.error("Invalid state update sender id {packet_sender_id}!".format({"packet_sender_id":str(p_packet_sender_id)}))
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
 	

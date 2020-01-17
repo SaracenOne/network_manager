@@ -59,6 +59,8 @@ var peer_server_data : Dictionary = {}
 var active_port : int = -1
 var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
 var peers : Array = []
+var is_server_authoritive : bool = true
+var session_master : int = -1
 
 signal network_process(p_delta)
 signal game_hosted()
