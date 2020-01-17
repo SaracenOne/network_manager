@@ -2,6 +2,7 @@ extends Node
 tool
 
 const entity_const = preload("res://addons/entity_manager/entity.gd")
+const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 
@@ -32,13 +33,6 @@ via small spawn commands
 """
 var networked_scenes : Array = []
 
-enum {
-	UPDATE_ENTITY_COMMAND = 0,
-	SPAWN_ENTITY_COMMAND,
-	DESTROY_ENTITY_COMMAND,
-	SET_PARENT_ENTITY_COMMAND,
-	TRANSFER_ENTITY_MASTER_COMMAND
-}
 
 """ Network ids """
 
@@ -242,20 +236,20 @@ func create_entity_transfer_master_command(p_entity : entity_const) -> network_w
 func create_entity_command(p_command : int, p_entity : entity_const) -> network_writer_const:
 	var network_writer : network_writer_const = network_writer_const.new()
 	match p_command:
-		UPDATE_ENTITY_COMMAND:
-			network_writer.put_u8(UPDATE_ENTITY_COMMAND)
+		network_constants_const.UPDATE_ENTITY_COMMAND:
+			network_writer.put_u8(network_constants_const.UPDATE_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_update_command(p_entity))
-		SPAWN_ENTITY_COMMAND:
-			network_writer.put_u8(SPAWN_ENTITY_COMMAND)
+		network_constants_const.SPAWN_ENTITY_COMMAND:
+			network_writer.put_u8(network_constants_const.SPAWN_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_spawn_command(p_entity))
-		DESTROY_ENTITY_COMMAND:
-			network_writer.put_u8(DESTROY_ENTITY_COMMAND)
+		network_constants_const.DESTROY_ENTITY_COMMAND:
+			network_writer.put_u8(network_constants_const.DESTROY_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_destroy_command(p_entity))
-		SET_PARENT_ENTITY_COMMAND:
-			network_writer.put_u8(SET_PARENT_ENTITY_COMMAND)
+		network_constants_const.SET_PARENT_ENTITY_COMMAND:
+			network_writer.put_u8(network_constants_const.SET_PARENT_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_set_parent_command(p_entity))
-		TRANSFER_ENTITY_MASTER_COMMAND:
-			network_writer.put_u8(TRANSFER_ENTITY_MASTER_COMMAND)
+		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
+			network_writer.put_u8(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND)
 			network_writer.put_writer(create_entity_transfer_master_command(p_entity))
 		_:
 			ErrorManager.error("Unknown entity message")
@@ -294,7 +288,7 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	var entity_spawn_writers : Array = []
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
-			entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
+			entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
 		
 	var network_writer : network_writer_const = network_writer_const.new()
 	for entity_spawn_writer in entity_spawn_writers:
@@ -318,17 +312,17 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				# Spawn commands
 				var entity_spawn_writers : Array = []
 				for entity in network_entities_pending_spawn:
-					entity_spawn_writers.append(create_entity_command(SPAWN_ENTITY_COMMAND, entity))
+					entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
 					
 				# Reparent commands
 				var entity_reparent_writers : Array = []
 				for entity in network_entities_pending_reparenting:
-					entity_reparent_writers.append(create_entity_command(SET_PARENT_ENTITY_COMMAND, entity))
+					entity_reparent_writers.append(create_entity_command(network_constants_const.SET_PARENT_ENTITY_COMMAND, entity))
 					
 				# Destroy commands
 				var entity_destroy_writers : Array = []
 				for entity in network_entities_pending_destruction:
-					entity_destroy_writers.append(create_entity_command(DESTROY_ENTITY_COMMAND, entity))
+					entity_destroy_writers.append(create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity))
 					
 				# Put spawn, reparent, and destroy commands into the reliable channel
 				for entity_spawn_writer in entity_spawn_writers:
@@ -345,10 +339,10 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				if entity.is_inside_tree():
 					### get this working
 					if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
-						entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+						entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
 					else:
 						if (entity.get_network_master() == p_id):
-							entity_update_writers.append(create_entity_command(UPDATE_ENTITY_COMMAND, entity))
+							entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
 							
 			# Put the update commands into the unreliable channel
 			for entity_update_writer in entity_update_writers:
@@ -539,6 +533,53 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 	
 	return p_network_reader
 	
+func encode_voice_packet(
+	p_packet_sender_id : int,
+	p_network_writer : network_writer_const,
+	p_index : int,
+	p_voice_buffer : PoolByteArray
+	) -> network_writer_const:
+		
+	var voice_buffer_size : int = p_voice_buffer.size()
+	
+	p_network_writer.put_u24(p_index)
+	p_network_writer.put_u16(voice_buffer_size)
+	p_network_writer.put_data(p_voice_buffer)
+	
+	return p_network_writer
+	
+func decode_voice_command(
+	p_packet_sender_id : int,
+	p_network_reader : network_reader_const
+	) -> network_reader_const:
+		
+	if p_packet_sender_id != NetworkManager.SERVER_MASTER_PEER_ID:
+		ErrorManager.error("decode_voice_command: recieved voice command from non server ID!")
+		return null
+		
+	var encoded_voice : PoolByteArray = PoolByteArray()
+	var encoded_index : int = -1
+	var encoded_size : int = -1
+	
+	if p_network_reader.is_eof():
+		return null
+	encoded_index = p_network_reader.get_u24()
+	if p_network_reader.is_eof():
+		return null
+	encoded_size = p_network_reader.get_u16()
+	if p_network_reader.is_eof():
+		return null
+	encoded_voice = p_network_reader.get_buffer(encoded_size)
+	if p_network_reader.is_eof():
+		return null
+	
+	if encoded_size != encoded_voice.size():
+		printerr("pool size mismatch!")
+	
+	NetworkManager.emit_signal("voice_packet_compressed", p_packet_sender_id, encoded_index, encoded_voice)
+	
+	return p_network_reader
+		
 func decode_replication_buffer(p_packet_sender_id : int, p_buffer : PoolByteArray) -> void:
 	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
 	
@@ -548,15 +589,15 @@ func decode_replication_buffer(p_packet_sender_id : int, p_buffer : PoolByteArra
 			break
 			
 		match command:
-			UPDATE_ENTITY_COMMAND:
+			network_constants_const.UPDATE_ENTITY_COMMAND:
 				network_reader = decode_entity_update_command(p_packet_sender_id, network_reader)
-			SPAWN_ENTITY_COMMAND:
+			network_constants_const.SPAWN_ENTITY_COMMAND:
 				network_reader = decode_entity_spawn_command(p_packet_sender_id, network_reader)
-			DESTROY_ENTITY_COMMAND:
+			network_constants_const.DESTROY_ENTITY_COMMAND:
 				network_reader = decode_entity_destroy_command(p_packet_sender_id, network_reader)
-			SET_PARENT_ENTITY_COMMAND:
+			network_constants_const.SET_PARENT_ENTITY_COMMAND:
 				network_reader = decode_entity_set_parent_command(p_packet_sender_id, network_reader)
-			TRANSFER_ENTITY_MASTER_COMMAND:
+			network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 				network_reader = decode_entity_transfer_master_command(p_packet_sender_id, network_reader)
 			_:
 				break

@@ -1,6 +1,8 @@
 extends Node
 tool
 
+const network_writer_const = preload("network_writer.gd")
+const network_reader_const = preload("network_reader.gd")
 
 const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
@@ -14,6 +16,8 @@ var multiplayer_signal_table : Array = [
 	{"signal":"network_peer_packet", "method":"_network_peer_packet"},
 ]
 
+onready var gameroot = get_tree().get_root()
+
 const PACKET_SEND_RATE = 0.0
 var time_passed = 0.0
 var time_until_next_send = 0.0
@@ -26,6 +30,9 @@ enum validation_state_enum {
 	VALIDATION_STATE_STATE_SENT,
 	VALIDATION_STATE_SYNCED
 }
+
+var network_replication_manager : Node = null
+const network_replication_manager_const = preload("network_replication_manager.gd")
 
 var server_is_disconnected = true
 
@@ -57,6 +64,8 @@ signal connection_failed()
 signal connection_succeeded()
 signal server_disconnected()
 signal network_peer_packet()
+
+signal voice_packet_compressed(p_id, p_index, p_buffer)
 
 var networked_scene_paths : PoolStringArray = PoolStringArray()
 var networked_scenes : Array = []
@@ -94,6 +103,9 @@ func _server_disconnected() -> void:
 	print("Server disconnected")
 	server_is_disconnected = true
 	emit_signal("server_disconnected")
+	
+func get_entity_root_node() -> Node:
+	return gameroot
 	
 #Client/Server
 func _network_peer_packet(p_id : int, p_packet : PoolByteArray) -> void:
@@ -401,3 +413,12 @@ func _ready() -> void:
 					{"signal":str(current_signal.signal)}))
 					
 		cache_networked_scenes()
+		
+func _enter_tree() -> void:
+	# Add sub managers to the tree
+	add_child(network_replication_manager)
+
+func _init() -> void:
+	network_replication_manager = Node.new()
+	network_replication_manager.set_script(network_replication_manager_const)
+	network_replication_manager.set_name("NetworkReplicationManager")

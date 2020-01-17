@@ -6,6 +6,12 @@ const entity_const = preload("res://addons/entity_manager/entity.gd")
 var eof_reached : bool = false
 var stream_peer_buffer : StreamPeerBuffer = null
 
+# TODO: account for big endian
+static func decode_24_bit_value(p_buffer : PoolByteArray) -> int:
+	var integer : int = 0
+	integer = p_buffer[0] & 0x000000ff | (p_buffer[1] << 8) & 0x0000ff00 | (p_buffer[2] << 16) & 0x00ff0000
+	return integer
+
 func _init(p_buffer : PoolByteArray) -> void:
 	assert(typeof(p_buffer) == TYPE_RAW_ARRAY)
 	stream_peer_buffer = StreamPeerBuffer.new()
@@ -40,6 +46,12 @@ func get_16() -> int:
 		return 0
 	return stream_peer_buffer.get_16()
 	
+func get_24() -> int:
+	if stream_peer_buffer.get_available_bytes() < 3:
+		eof_reached = true
+		return 0
+	return decode_24_bit_value(PoolByteArray([stream_peer_buffer.get_8(), stream_peer_buffer.get_8(), stream_peer_buffer.get_8()]))
+	
 func get_32() -> int:
 	if stream_peer_buffer.get_available_bytes() < 4:
 		eof_reached = true
@@ -64,6 +76,12 @@ func get_u16() -> int:
 		return 0
 	return stream_peer_buffer.get_u16()
 	
+func get_u24() -> int:
+	if stream_peer_buffer.get_available_bytes() < 3:
+		eof_reached = true
+		return 0
+	return decode_24_bit_value(PoolByteArray([stream_peer_buffer.get_8(), stream_peer_buffer.get_8(), stream_peer_buffer.get_8()]))
+	
 func get_u32() -> int:
 	if stream_peer_buffer.get_available_bytes() < 4:
 		eof_reached = true
@@ -87,6 +105,13 @@ func get_double() -> float:
 		eof_reached = true
 		return 0.0
 	return stream_peer_buffer.get_double()
+	
+func get_buffer(p_size) -> PoolByteArray:
+	if stream_peer_buffer.get_available_bytes() < p_size:
+		eof_reached = true
+		stream_peer_buffer.seek(stream_peer_buffer.get_size())
+		return PoolByteArray()
+	return stream_peer_buffer.data_array.subarray(stream_peer_buffer.get_position(), stream_peer_buffer.get_position() + p_size)
 	
 # Helpers
 	

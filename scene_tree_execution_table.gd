@@ -11,13 +11,16 @@ var scene_tree_execution_table : Array = []
 
 func _add_entity_instance_unsafe(p_instance : Node, p_parent : Node = null) -> void:
 	if p_parent:
+		print("Adding entity: " + p_instance.get_name())
 		p_parent.add_child(p_instance)
 		
 func _remove_entity_instance_unsafe(p_instance : Node) -> void:
+	print("Removing entity: " + p_instance.get_name())
 	p_instance.queue_free()
 	p_instance.get_parent().remove_child(p_instance)
 	
 func _reparent_entity_instance_unsafe(p_instance : Node, p_parent : Node = null) -> void:
+	print("Reparenting entity: " + p_instance.get_name())
 	if !p_instance.is_inside_tree():
 		ErrorManager.error("reparent_entity_instance: entity not inside tree!")
 		

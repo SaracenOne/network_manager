@@ -10,8 +10,6 @@ func _enter_tree():
 	editor_interface = get_editor_interface()
 	
 	add_autoload_singleton("NetworkManager", "res://addons/network_manager/network_manager.gd")
-	add_autoload_singleton("NetworkReplicationManager", "res://addons/network_manager/network_replication_manager.gd")
 
 func _exit_tree():
 	remove_autoload_singleton("NetworkManager")
-	remove_autoload_singleton("NetworkReplicationManager")
