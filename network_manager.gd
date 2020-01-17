@@ -1,8 +1,11 @@
 extends Node
 tool
 
+const entity_const = preload("res://addons/entity_manager/entity.gd")
+
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
+const network_constants_const = preload("network_constants.gd")
 
 const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
@@ -31,8 +34,13 @@ enum validation_state_enum {
 	VALIDATION_STATE_SYNCED
 }
 
-var network_replication_manager : Node = null
 const network_replication_manager_const = preload("network_replication_manager.gd")
+const network_state_manager_const = preload("network_state_manager.gd")
+const network_entity_manager_const = preload("network_entity_manager.gd")
+
+var network_replication_manager : Node = null
+var network_state_manager : Node = null
+var network_entity_manager : Node = null
 
 var server_is_disconnected = true
 
@@ -66,19 +74,6 @@ signal server_disconnected()
 signal network_peer_packet()
 
 signal voice_packet_compressed(p_id, p_index, p_buffer)
-
-var networked_scene_paths : PoolStringArray = PoolStringArray()
-var networked_scenes : Array = []
-
-# TODO: thread this
-func cache_networked_scenes():
-	networked_scenes.resize(networked_scene_paths.size())
-	
-	for i in range(0, networked_scene_paths.size()):
-		var packed_scene : PackedScene = null
-		
-		if ResourceLoader.exists(networked_scene_paths[i]):
-			packed_scene = ResourceLoader.load(networked_scene_paths[i])
 	
 #Server
 func _network_peer_connected(p_id : int) -> void:
@@ -383,6 +378,21 @@ func server_kick_player(p_id : int) -> void:
 			
 			# TODO register disconnection
 
+func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
+	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
+	
+	while network_reader:
+		var command = network_reader.get_u8()
+		if network_reader.is_eof():
+			break
+			
+		if command == network_constants_const.SPAWN_ENTITY_COMMAND or command == network_constants_const.DESTROY_ENTITY_COMMAND or command == network_constants_const.SET_PARENT_ENTITY_COMMAND or command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
+			network_reader = network_replication_manager.decode_replication_buffer(p_id, network_reader, command)
+		elif command == network_constants_const.UPDATE_ENTITY_COMMAND:
+			network_reader = network_state_manager.decode_state_buffer(p_id, network_reader, command)
+			
+	network_entity_manager.scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
+
 func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) -> void:
 	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
 	var send_bytes_result : int = get_tree().multiplayer.send_bytes(p_buffer, p_id)
@@ -412,13 +422,25 @@ func _ready() -> void:
 				printerr("NetworkManager: {signal} could not be connected!".format(
 					{"signal":str(current_signal.signal)}))
 					
-		cache_networked_scenes()
+		network_entity_manager.cache_networked_scenes()
 		
 func _enter_tree() -> void:
-	# Add sub managers to the tree
-	add_child(network_replication_manager)
+	if Engine.is_editor_hint() == false:
+		#Add sub managers to the tree
+		add_child(network_replication_manager)
+		add_child(network_state_manager)
+		add_child(network_entity_manager)
 
 func _init() -> void:
-	network_replication_manager = Node.new()
-	network_replication_manager.set_script(network_replication_manager_const)
-	network_replication_manager.set_name("NetworkReplicationManager")
+	if Engine.is_editor_hint() == false:
+		network_replication_manager = Node.new()
+		network_replication_manager.set_script(network_replication_manager_const)
+		network_replication_manager.set_name("NetworkReplicationManager")
+		
+		network_state_manager = Node.new()
+		network_state_manager.set_script(network_state_manager_const)
+		network_state_manager.set_name("NetworkStateManager")
+		
+		network_entity_manager = Node.new()
+		network_entity_manager.set_script(network_entity_manager_const)
+		network_entity_manager.set_name("NetworkEntityManager")
