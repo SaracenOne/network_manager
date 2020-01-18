@@ -3,7 +3,6 @@ tool
 
 var stream_peer_buffer : StreamPeerBuffer = StreamPeerBuffer.new()
 
-# TODO: account for big endian
 static func encode_24_bit_value(p_value : int) -> PoolByteArray:
 	return PoolByteArray([(p_value & 0x000000ff), (p_value & 0x0000ff00) >> 8, (p_value & 0x00ff0000) >> 16])
 
@@ -39,7 +38,10 @@ func put_16(p_value : int) -> void:
 	stream_peer_buffer.put_16(p_value)
 	
 func put_24(p_value : int) -> void:
-	stream_peer_buffer.put_data(encode_24_bit_value(p_value))
+	var value_buffer : PoolByteArray = encode_24_bit_value(p_value)
+	if stream_peer_buffer.big_endian:
+		value_buffer.invert()
+	stream_peer_buffer.put_data(value_buffer)
 	
 func put_32(p_value : int) -> void:
 	stream_peer_buffer.put_32(p_value)
@@ -54,7 +56,7 @@ func put_u16(p_value : int) -> void:
 	stream_peer_buffer.put_u16(p_value)
 
 func put_u24(p_value : int) -> void:
-	stream_peer_buffer.put_data(encode_24_bit_value(p_value))
+	put_24(p_value)
 
 func put_u32(p_value : int) -> void:
 	stream_peer_buffer.put_u32(p_value)
