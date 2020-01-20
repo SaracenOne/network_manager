@@ -171,18 +171,10 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		var synced_peers : Array = []
-		if p_id == NetworkManager.session_master or p_id == NetworkManager.SERVER_MASTER_PEER_ID:
-			synced_peers = NetworkManager.get_synced_peers()
-		else:
-			if NetworkManager.is_server_authoritive:
-				synced_peers = [NetworkManager.session_master]
-			else:
-				synced_peers = NetworkManager.get_synced_peers()
+		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
 			
 		for synced_peer in synced_peers:
 			var reliable_network_writer : network_writer_const = network_writer_const.new()
-			var unreliable_network_writer : network_writer_const = network_writer_const.new()
 			
 			if p_id == NetworkManager.session_master:
 				# Spawn commands
@@ -396,58 +388,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 		ErrorManager.error("Attempted to transfer master of invalid node")
 	
 	return p_network_reader
-	
-func encode_voice_packet(
-	p_packet_sender_id : int,
-	p_network_writer : network_writer_const,
-	p_index : int,
-	p_voice_buffer : PoolByteArray
-	) -> network_writer_const:
-		
-	var voice_buffer_size : int = p_voice_buffer.size()
-	
-	p_network_writer.put_u24(p_index)
-	p_network_writer.put_u16(voice_buffer_size)
-	p_network_writer.put_data(p_voice_buffer)
-	
-	return p_network_writer
-	
-func decode_voice_command(
-	p_packet_sender_id : int,
-	p_network_reader : network_reader_const
-	) -> network_reader_const:
-		
-	var valid_sender_id = false
 
-	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
-		valid_sender_id = true	
-
-	if valid_sender_id == false:
-		ErrorManager.error("decode_voice_command: recieved voice command from non server ID!")
-		return null
-		
-	var encoded_voice : PoolByteArray = PoolByteArray()
-	var encoded_index : int = -1
-	var encoded_size : int = -1
-	
-	if p_network_reader.is_eof():
-		return null
-	encoded_index = p_network_reader.get_u24()
-	if p_network_reader.is_eof():
-		return null
-	encoded_size = p_network_reader.get_u16()
-	if p_network_reader.is_eof():
-		return null
-	encoded_voice = p_network_reader.get_buffer(encoded_size)
-	if p_network_reader.is_eof():
-		return null
-	
-	if encoded_size != encoded_voice.size():
-		printerr("pool size mismatch!")
-	
-	NetworkManager.emit_signal("voice_packet_compressed", p_packet_sender_id, encoded_index, encoded_voice)
-	
-	return p_network_reader
 		
 func decode_replication_buffer(p_packet_sender_id : int, p_network_reader : network_reader_const, p_command : int) -> network_reader_const:
 	match p_command:

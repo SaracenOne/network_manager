@@ -44,17 +44,10 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 		
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		var synced_peers : Array = []
-		if p_id == NetworkManager.session_master or p_id == NetworkManager.SERVER_MASTER_PEER_ID:
-			synced_peers = NetworkManager.get_synced_peers()
-		else:
-			if NetworkManager.is_server_authoritive:
-				synced_peers = [NetworkManager.session_master]
-			else:
-				synced_peers = NetworkManager.get_synced_peers()
+		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
 			
 		for synced_peer in synced_peers:
-			var unreliable_network_writer : network_writer_const = network_writer_const.new()
+			var unreliable_ordered_network_writer : network_writer_const = network_writer_const.new()
 
 			# Update commands
 			var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
@@ -70,10 +63,10 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 							
 			# Put the update commands into the unreliable channel
 			for entity_update_writer in entity_update_writers:
-				unreliable_network_writer.put_writer(entity_update_writer)
+				unreliable_ordered_network_writer.put_writer(entity_update_writer)
 					
-			if unreliable_network_writer.get_size() > 0:
-				NetworkManager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
+			if unreliable_ordered_network_writer.get_size() > 0:
+				NetworkManager.send_packet(unreliable_ordered_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 """
 Client
 """
@@ -94,7 +87,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 		var network_identity_instance : Node = network_entity_manager.network_instance_ids[instance_id]
 		var network_instance_master : int = network_identity_instance.get_network_master()
 		var invalid_sender_id = false
-		if NetworkManager.is_server_authoritive:
+		if NetworkManager.is_server_authoritative():
 			# Only the server will accept state updates for entities directly and other clients will accept them from the host
 			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
 				network_identity_instance.update_state(p_network_reader, false)

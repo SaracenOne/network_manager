@@ -112,7 +112,12 @@ func get_buffer(p_size) -> PoolByteArray:
 		eof_reached = true
 		stream_peer_buffer.seek(stream_peer_buffer.get_size())
 		return PoolByteArray()
-	return stream_peer_buffer.data_array.subarray(stream_peer_buffer.get_position(), stream_peer_buffer.get_position() + p_size)
+		
+	var pos : int = stream_peer_buffer.get_position()
+	var buffer : PoolByteArray = stream_peer_buffer.data_array.subarray(pos, pos + p_size - 1)
+	stream_peer_buffer.seek(pos + p_size)
+	
+	return buffer
 	
 # Helpers
 	

@@ -36,10 +36,12 @@ enum validation_state_enum {
 
 const network_replication_manager_const = preload("network_replication_manager.gd")
 const network_state_manager_const = preload("network_state_manager.gd")
+const network_voice_manager_const = preload("network_voice_manager.gd")
 const network_entity_manager_const = preload("network_entity_manager.gd")
 
 var network_replication_manager : Node = null
 var network_state_manager : Node = null
+var network_voice_manager : Node = null
 var network_entity_manager : Node = null
 
 var server_is_disconnected = true
@@ -59,7 +61,7 @@ var peer_server_data : Dictionary = {}
 var active_port : int = -1
 var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
 var peers : Array = []
-var is_server_authoritive : bool = true
+var is_server_authoritative : bool = true
 var session_master : int = -1
 
 signal network_process(p_delta)
@@ -113,6 +115,9 @@ func has_active_peer() -> bool:
 	
 func is_server() -> bool:
 	return has_active_peer() == false or get_tree().multiplayer.is_network_server()
+	
+func is_server_authoritative() -> bool:
+	return is_server_authoritative
 	
 func is_rpc_sender_id_server() -> bool:
 	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_MASTER_PEER_ID
@@ -392,6 +397,8 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 			network_reader = network_replication_manager.decode_replication_buffer(p_id, network_reader, command)
 		elif command == network_constants_const.UPDATE_ENTITY_COMMAND:
 			network_reader = network_state_manager.decode_state_buffer(p_id, network_reader, command)
+		elif command == network_constants_const.VOICE_COMMAND:
+			network_reader = network_voice_manager.decode_voice_buffer(p_id, network_reader, command)
 			
 	network_entity_manager.scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
 
@@ -415,6 +422,18 @@ func _process(p_delta : float) -> void:
 					emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
 					time_until_next_send = time_passed + PACKET_SEND_RATE
 	
+func get_valid_send_peers(p_id : int) -> Array:
+	var synced_peers : Array = []
+	if p_id == session_master or p_id == SERVER_MASTER_PEER_ID:
+		synced_peers = get_synced_peers()
+	else:
+		if is_server_authoritative:
+			synced_peers = [session_master]
+		else:
+			synced_peers = get_synced_peers()
+			
+	return synced_peers
+	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:
 		entity_root_node_path = NodePath(ProjectSettings.get_setting("network/config/entity_root_node"))
@@ -431,6 +450,7 @@ func _enter_tree() -> void:
 		#Add sub managers to the tree
 		add_child(network_replication_manager)
 		add_child(network_state_manager)
+		add_child(network_voice_manager)
 		add_child(network_entity_manager)
 
 func _init() -> void:
@@ -442,6 +462,10 @@ func _init() -> void:
 		network_state_manager = Node.new()
 		network_state_manager.set_script(network_state_manager_const)
 		network_state_manager.set_name("NetworkStateManager")
+		
+		network_voice_manager = Node.new()
+		network_voice_manager.set_script(network_voice_manager_const)
+		network_voice_manager.set_name("NetworkVoiceManager")
 		
 		network_entity_manager = Node.new()
 		network_entity_manager.set_script(network_entity_manager_const)
