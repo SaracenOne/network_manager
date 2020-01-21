@@ -78,13 +78,13 @@ func decode_voice_command(
 				var unreliable_network_writer : network_writer_const = network_writer_const.new()
 				
 				# Voice commands
-				unreliable_network_writer = encode_voice_buffer(synced_peer,
+				unreliable_network_writer = encode_voice_buffer(sender_id,
 				unreliable_network_writer,
 				encoded_index,
 				encoded_voice,
 				true)
 				
-				NetworkManager.send_packet(unreliable_network_writer.get_raw_data(), sender_id, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+				NetworkManager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 	
 	NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
 	
