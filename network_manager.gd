@@ -150,6 +150,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	active_ip = LOCALHOST_IP
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
+	net.server_relay = false
 	if (net.create_server(active_port, max_players) != OK):
 		print("Cannot create a server on port {port}!".format({"port":str(active_port)}))
 		return false
@@ -177,6 +178,7 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	server_is_disconnected = false
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
+	net.server_relay = false
 	
 	if p_ip.is_valid_ip_address() == false:
 		print("Invalid ip address!")
@@ -247,13 +249,16 @@ remote func register_peer(p_id : int) -> void:
 			{"rpc_sender_id":str(rpc_sender_id)}))
 			return
 			
-		rpc_id(rpc_sender_id, "register_peer", 1) # Register server player to new client
+		rpc_id(rpc_sender_id, "register_peer", SERVER_MASTER_PEER_ID) # Register server player to new client
 		
 		for peer_id in peers: # Then, for each remote player
 			rpc_id(rpc_sender_id, "register_peer", peer_id) # Send other clients to new client
 			rpc_id(peer_id, "register_peer", rpc_sender_id) # Send new client to other players
 			
 	peers.append(p_id)
+	
+	print("peer_registered:{id}".format({"id":str(p_id)}))
+	
 	emit_signal("peer_registered", p_id)
 	emit_signal("peer_list_changed")
 	
@@ -271,6 +276,7 @@ sync func unregister_peer(p_id : int) -> void:
 		if peer_server_data.erase(p_id) == false:
 			printerr("Could not erase peer server data!")
 	
+	print("peer_unregistered:{id}".format({"id":str(p_id)}))
 	emit_signal("peer_unregistered", p_id)
 	emit_signal("peer_list_changed")
 	
@@ -411,6 +417,8 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 			network_reader = network_state_manager.decode_state_buffer(p_id, network_reader, command)
 		elif command == network_constants_const.VOICE_COMMAND:
 			network_reader = network_voice_manager.decode_voice_buffer(p_id, network_reader, command)
+		else:
+			printerr("Invalid command: " + str(command))
 			
 	network_entity_manager.scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
 

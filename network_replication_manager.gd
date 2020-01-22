@@ -156,9 +156,16 @@ func get_network_scene_id_from_path(p_path : String) -> int:
 	
 func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	NetworkManager.network_entity_manager.scene_tree_execution_table.call("_execute_scene_tree_execution_table_unsafe")
-	
+
 	var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
 	var entity_spawn_writers : Array = []
+	
+	print("Spawn state = [")
+	for foo in entities:
+		if foo.is_inside_tree() and not network_entities_pending_spawn.has(foo):
+			print("{ " + foo.get_name() + " }")
+	print("] for " + str(p_network_id))
+	
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
 			entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
@@ -171,6 +178,25 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
+		
+		if network_entities_pending_spawn.size():
+			print("Spawning entities = [")
+			for entity in network_entities_pending_spawn:
+				print("{ " + entity.get_name() + " }")
+			print("]")
+			
+		if network_entities_pending_reparenting.size():
+			print("Spawning entities = [")
+			for entity in network_entities_pending_reparenting:
+				print("{ " + entity.get_name() + " }")
+			print("]")
+			
+		if network_entities_pending_destruction.size():
+			print("Spawning entities = [")
+			for entity in network_entities_pending_destruction:
+				print("{ " + entity.get_name() + " }")
+			print("]")
+		
 		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
 			
 		for synced_peer in synced_peers:
@@ -210,14 +236,17 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 """
 Client
 """
-func get_packed_scene_for_scene_id(p_scene_id : int) -> PackedScene:
+func get_scene_path_for_scene_id(p_scene_id : int) -> String:
 	assert(NetworkManager.network_entity_manager.networked_scenes.size() > p_scene_id)
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
-	
 	var path : String = network_entity_manager.networked_scenes[p_scene_id]
-	assert(ResourceLoader.exists(path))
 	
-	var packed_scene : PackedScene = ResourceLoader.load(path)
+	return path
+
+func get_packed_scene_for_path(p_path : String) -> PackedScene:
+	assert(ResourceLoader.exists(p_path))
+	
+	var packed_scene : PackedScene = ResourceLoader.load(p_path)
 	assert(packed_scene is PackedScene)
 	
 	return packed_scene
@@ -261,7 +290,8 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 		ErrorManager.error("decode_entity_spawn_command: eof!")
 		return null
 	
-	var packed_scene : PackedScene = get_packed_scene_for_scene_id(scene_id)
+	var scene_path : String = get_scene_path_for_scene_id(scene_id)
+	var packed_scene : PackedScene = get_packed_scene_for_path(scene_path)
 	var entity_instance : entity_const = packed_scene.instance()
 	
 	# If this entity has a parent, try to find it
@@ -316,7 +346,7 @@ func decode_entity_set_parent_command(p_packet_sender_id : int, p_network_reader
 	var valid_sender_id = false
 
 	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
-		valid_sender_id = true	
+		valid_sender_id = true
 
 	if valid_sender_id == false:
 		ErrorManager.error("decode_entity_set_parent_command: recieved set_parent command from non server ID!")
