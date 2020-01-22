@@ -186,13 +186,13 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 			print("]")
 			
 		if network_entities_pending_reparenting.size():
-			print("Spawning entities = [")
+			print("Reparenting entities = [")
 			for entity in network_entities_pending_reparenting:
 				print("{ " + entity.get_name() + " }")
 			print("]")
 			
 		if network_entities_pending_destruction.size():
-			print("Spawning entities = [")
+			print("Destroying entities = [")
 			for entity in network_entities_pending_destruction:
 				print("{ " + entity.get_name() + " }")
 			print("]")
