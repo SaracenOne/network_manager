@@ -7,6 +7,8 @@ const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 const network_constants_const = preload("network_constants.gd")
 
+const LOCALHOST_IP = "127.0.0.1"
+
 const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
 
@@ -46,8 +48,13 @@ var network_entity_manager : Node = null
 
 var server_is_disconnected = true
 
+# Client
+var join_ip : String = LOCALHOST_IP
+var join_port : int = 7777
+
 # Server
 var host_port : int = 7777 # Configuration
+
 var entity_root_node_path : NodePath = NodePath()
 var server_dedicated : bool = false
 var max_players : int  = -1
@@ -57,8 +64,11 @@ var max_players : int  = -1
 ################
 # Server
 var peer_server_data : Dictionary = {}
+
 # Shared
 var active_port : int = -1
+var active_ip : String = ""
+
 var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
 var peers : Array = []
 var is_server_authoritative : bool = true
@@ -137,6 +147,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 		active_port = p_port
 	else:
 		active_port = host_port
+	active_ip = LOCALHOST_IP
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
 	if (net.create_server(active_port, max_players) != OK):
@@ -176,6 +187,7 @@ func join_game(p_ip : String, p_port : int) -> bool:
 		{"ip":p_ip, "port":str(p_port)}))
 		return false
 		
+	active_ip = p_ip
 	active_port = p_port
 
 	time_passed = 0.0
@@ -443,6 +455,13 @@ func _ready() -> void:
 				printerr("NetworkManager: {signal} could not be connected!".format(
 					{"signal":str(current_signal.signal)}))
 					
+		if ProjectSettings.has_setting("network/config/join_ip"):
+			join_ip = ProjectSettings.get_setting("network/config/join_ip")
+		if ProjectSettings.has_setting("network/config/join_port"):
+			join_port = ProjectSettings.get_setting("network/config/join_port")
+		if ProjectSettings.has_setting("network/config/host_port"):
+			host_port = ProjectSettings.get_setting("network/config/host_port")
+			
 		network_entity_manager.cache_networked_scenes()
 		
 func _enter_tree() -> void:
