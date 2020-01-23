@@ -21,6 +21,8 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	for child in get_children():
 		writer = child.on_serialize(writer, p_initial_state)
 		
+	set_dirty(false)
+		
 	return writer
 	
 func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
@@ -31,6 +33,9 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 		p_reader = child.on_deserialize(p_reader, p_initial_state)
 		
 	return p_reader
+	
+func set_dirty(p_is_dirty : bool):
+	is_dirty = p_is_dirty
 
 func destroy_entity() -> void:
 	var entity_node : Node = get_entity_node()
