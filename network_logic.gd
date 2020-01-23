@@ -4,14 +4,24 @@ class_name NetworkLogic
 const network_reader_const = preload("res://addons/network_manager/network_reader.gd")
 const network_writer_const = preload("res://addons/network_manager/network_writer.gd")
 
+var cached_writer : network_writer_const = network_writer_const.new()
+export(int) var cached_writer_size = 0
+
+var is_dirty : bool = true
+
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	if p_writer == null:
-		return p_writer
+	var writer : network_writer_const = p_writer
+	if writer == null:
+		writer = cached_writer
+		if is_dirty:
+			cached_writer.seek(0)
+		else:
+			return cached_writer
 	
 	for child in get_children():
-		p_writer = child.on_serialize(p_writer, p_initial_state)
+		writer = child.on_serialize(writer, p_initial_state)
 		
-	return p_writer
+	return writer
 	
 func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
 	if p_reader == null:
@@ -29,3 +39,6 @@ func destroy_entity() -> void:
 		
 	entity_node.queue_free()
 	entity_node.get_parent().remove_child(entity_node)
+
+func _ready() -> void:
+	cached_writer.resize(cached_writer_size)

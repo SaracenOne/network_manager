@@ -23,10 +23,6 @@ var multiplayer_signal_table : Array = [
 
 onready var gameroot = get_tree().get_root()
 
-const PACKET_SEND_RATE = 0.0
-var time_passed = 0.0
-var time_until_next_send = 0.0
-
 enum validation_state_enum {
 	VALIDATION_STATE_NONE,
 	VALIDATION_STATE_CONNECTION,
@@ -45,8 +41,6 @@ var network_replication_manager : Node = null
 var network_state_manager : Node = null
 var network_voice_manager : Node = null
 var network_entity_manager : Node = null
-
-var server_is_disconnected = true
 
 # Client
 var join_ip : String = LOCALHOST_IP
@@ -71,16 +65,21 @@ var active_ip : String = ""
 
 var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
 var peers : Array = []
+var valid_peers : Array = []
 var is_server_authoritative : bool = true
 var session_master : int = -1
 
 signal network_process(p_delta)
+signal reset_timers()
 signal game_hosted()
 
 signal peer_registered(p_id)
 signal peer_unregistered(p_id)
 signal peer_list_changed()
 signal peer_registration_complete()
+
+signal server_peer_connected(p_id)
+signal server_peer_disconnected(p_id)
 
 signal connection_failed()
 signal connection_succeeded()
@@ -93,9 +92,11 @@ signal voice_packet_compressed(p_id, p_index, p_buffer)
 func _network_peer_connected(p_id : int) -> void:
 	peer_server_data[p_id] = {"validation_state":validation_state_enum.VALIDATION_STATE_NONE, "time_since_last_update":0.0}
 	print("Network peer {id} connected!".format({"id":str(p_id)}))
+	emit_signal("server_peer_connected", p_id)
 
 func _network_peer_disconnected(p_id : int) -> void:
 	print("Network peer {id} disconnected!".format({"id":str(p_id)}))
+	emit_signal("server_peer_disconnected", p_id)
 	rpc("unregister_peer", p_id)
 
 #Clients
@@ -110,7 +111,6 @@ func _connection_failed() -> void:
 	
 func _server_disconnected() -> void:
 	print("Server disconnected")
-	server_is_disconnected = true
 	emit_signal("server_disconnected")
 	
 func get_entity_root_node() -> Node:
@@ -121,7 +121,7 @@ func _network_peer_packet(p_id : int, p_packet : PoolByteArray) -> void:
 	emit_signal("network_peer_packet", p_id, p_packet)
 
 func has_active_peer() -> bool:
-	return server_is_disconnected == false and get_tree().multiplayer.has_network_peer() and get_tree().multiplayer.network_peer.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED
+	return get_tree().multiplayer.has_network_peer() and get_tree().multiplayer.network_peer.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED
 	
 func is_server() -> bool:
 	return has_active_peer() == false or get_tree().multiplayer.is_network_server()
@@ -138,7 +138,6 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 		return false
 	
 	reset_session_data()
-	server_is_disconnected = false
 	
 	server_dedicated = p_dedicated
 	max_players = p_max_players
@@ -154,9 +153,6 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	if (net.create_server(active_port, max_players) != OK):
 		print("Cannot create a server on port {port}!".format({"port":str(active_port)}))
 		return false
-		
-	time_passed = 0.0
-	time_until_next_send = 0.0
 		
 	get_tree().multiplayer.set_network_peer(net)
 	get_tree().multiplayer.set_allow_object_decoding(false)
@@ -175,7 +171,6 @@ func join_game(p_ip : String, p_port : int) -> bool:
 		return false
 	
 	reset_session_data()
-	server_is_disconnected = false
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
 	net.server_relay = false
@@ -192,9 +187,6 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	active_ip = p_ip
 	active_port = p_port
 
-	time_passed = 0.0
-	time_until_next_send = 0.0
-
 	get_tree().multiplayer.set_network_peer(net)
 	get_tree().multiplayer.set_allow_object_decoding(false)
 
@@ -208,10 +200,11 @@ func reset_session_data() -> void:
 	client_state = validation_state_enum.VALIDATION_STATE_NONE
 	peers = []
 	
+	emit_signal("reset_timers")
+	
 func force_close_connection() -> void:
 	if has_active_peer():
 		print("Closing connection...")
-		server_is_disconnected = true
 		get_tree().multiplayer.set_network_peer(null)
 
 	reset_session_data()
@@ -276,6 +269,9 @@ sync func unregister_peer(p_id : int) -> void:
 		if peer_server_data.erase(p_id) == false:
 			printerr("Could not erase peer server data!")
 	
+	if valid_peers.has(p_id):
+		valid_peers.erase(p_id)
+	
 	print("peer_unregistered:{id}".format({"id":str(p_id)}))
 	emit_signal("peer_unregistered", p_id)
 	emit_signal("peer_list_changed")
@@ -305,12 +301,6 @@ func get_connected_peers() -> PoolIntArray:
 		return PoolIntArray()
 	
 func get_synced_peers() -> Array:
-	var valid_peers : Array = []
-	if is_server():
-		for key in peer_server_data.keys():
-			if peer_server_data[key].validation_state == validation_state_enum.VALIDATION_STATE_SYNCED:
-				valid_peers.append(key)
-				
 	return valid_peers
 
 ##########################
@@ -387,6 +377,8 @@ func confirm_client_ready_for_sync(p_network_id : int) -> void:
 		peer_server_data[p_network_id].time_since_last_update = 0.0
 		peer_server_data[p_network_id].validation_state = validation_state_enum.VALIDATION_STATE_SYNCED
 		
+		valid_peers.push_back(p_network_id)
+		
 func confirm_server_ready_for_sync() -> void:
 	print("confirm_server_ready_for_sync...")
 	client_state = validation_state_enum.VALIDATION_STATE_SYNCED
@@ -397,9 +389,11 @@ func server_kick_player(p_id : int) -> void:
 		var net : NetworkedMultiplayerPeer = get_tree().multiplayer.get_network_peer()
 		if net and net is NetworkedMultiplayerENet:
 			net.disconnect_peer(p_id)
-
+			
 			if peer_server_data.erase(p_id) == false:
 				printerr("Attempted to erase invalid peer_server_data entry!")
+			if valid_peers.has(p_id):
+				valid_peers.erase(p_id)
 			
 			# TODO register disconnection
 
@@ -425,22 +419,19 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) -> void:
 	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
 	var send_bytes_result : int = get_tree().multiplayer.send_bytes(p_buffer, p_id)
+	
 	if send_bytes_result != OK:
 		ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 		
 func _process(p_delta : float) -> void:
 	if Engine.is_editor_hint() == false:
-		time_passed += p_delta
-		
 		if is_server():
 			for peer in get_peer_list():
 				peer_server_data[peer].time_since_last_update += p_delta
 				
 		if has_active_peer():
 			if is_server() or client_state == validation_state_enum.VALIDATION_STATE_SYNCED:
-				if time_passed > time_until_next_send:
-					emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
-					time_until_next_send = time_passed + PACKET_SEND_RATE
+				emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
 	
 func get_valid_send_peers(p_id : int) -> Array:
 	var synced_peers : Array = []

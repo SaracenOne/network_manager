@@ -77,8 +77,8 @@ func create_entity_spawn_command(p_entity : entity_const) -> network_writer_cons
 	network_writer = network_entity_manager.write_entity_parent_id(p_entity, network_writer)
 	network_writer = network_entity_manager.write_entity_network_master(p_entity, network_writer)
 	
-	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(network_writer_const.new(), true)
-	network_writer.put_writer(entity_state)
+	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(null, true)
+	network_writer.put_writer(entity_state, entity_state.get_position())
 
 	return network_writer
 
@@ -178,61 +178,64 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		
-		if network_entities_pending_spawn.size():
-			print("Spawning entities = [")
-			for entity in network_entities_pending_spawn:
-				print("{ " + entity.get_name() + " }")
-			print("]")
+		if network_entities_pending_spawn.size() > 0 or network_entities_pending_reparenting.size() > 0 or network_entities_pending_destruction.size():
 			
-		if network_entities_pending_reparenting.size():
-			print("Reparenting entities = [")
-			for entity in network_entities_pending_reparenting:
-				print("{ " + entity.get_name() + " }")
-			print("]")
-			
-		if network_entities_pending_destruction.size():
-			print("Destroying entities = [")
-			for entity in network_entities_pending_destruction:
-				print("{ " + entity.get_name() + " }")
-			print("]")
-		
-		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
-			
-		for synced_peer in synced_peers:
-			var reliable_network_writer : network_writer_const = network_writer_const.new()
-			
-			if p_id == NetworkManager.session_master:
-				# Spawn commands
-				var entity_spawn_writers : Array = []
+			# Debugging information
+			if network_entities_pending_spawn.size():
+				print("Spawning entities = [")
 				for entity in network_entities_pending_spawn:
-					entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
-					
-				# Reparent commands
-				var entity_reparent_writers : Array = []
+					print("{ " + entity.get_name() + " }")
+				print("]")
+				
+			if network_entities_pending_reparenting.size():
+				print("Reparenting entities = [")
 				for entity in network_entities_pending_reparenting:
-					entity_reparent_writers.append(create_entity_command(network_constants_const.SET_PARENT_ENTITY_COMMAND, entity))
-					
-				# Destroy commands
-				var entity_destroy_writers : Array = []
+					print("{ " + entity.get_name() + " }")
+				print("]")
+				
+			if network_entities_pending_destruction.size():
+				print("Destroying entities = [")
 				for entity in network_entities_pending_destruction:
-					entity_destroy_writers.append(create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity))
-					
-				# Put spawn, reparent, and destroy commands into the reliable channel
-				for entity_spawn_writer in entity_spawn_writers:
-					reliable_network_writer.put_writer(entity_spawn_writer)
-				for entity_reparent_writer in entity_reparent_writers:
-					reliable_network_writer.put_writer(entity_reparent_writer)
-				for entity_destroy_writer in entity_destroy_writers:
-					reliable_network_writer.put_writer(entity_destroy_writer)
-					
-			if reliable_network_writer.get_size() > 0:
-				NetworkManager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+					print("{ " + entity.get_name() + " }")
+				print("]")
+			# Debugging end
 			
-		# Flush the pending spawn, parenting, and destruction queues
-		network_entities_pending_spawn = []
-		network_entities_pending_reparenting = []
-		network_entities_pending_destruction = []
+			var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
+				
+			for synced_peer in synced_peers:
+				var reliable_network_writer : network_writer_const = network_writer_const.new()
+				
+				if p_id == NetworkManager.session_master:
+					# Spawn commands
+					var entity_spawn_writers : Array = []
+					for entity in network_entities_pending_spawn:
+						entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
+						
+					# Reparent commands
+					var entity_reparent_writers : Array = []
+					for entity in network_entities_pending_reparenting:
+						entity_reparent_writers.append(create_entity_command(network_constants_const.SET_PARENT_ENTITY_COMMAND, entity))
+						
+					# Destroy commands
+					var entity_destroy_writers : Array = []
+					for entity in network_entities_pending_destruction:
+						entity_destroy_writers.append(create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity))
+						
+					# Put spawn, reparent, and destroy commands into the reliable channel
+					for entity_spawn_writer in entity_spawn_writers:
+						reliable_network_writer.put_writer(entity_spawn_writer)
+					for entity_reparent_writer in entity_reparent_writers:
+						reliable_network_writer.put_writer(entity_reparent_writer)
+					for entity_destroy_writer in entity_destroy_writers:
+						reliable_network_writer.put_writer(entity_destroy_writer)
+						
+				if reliable_network_writer.get_size() > 0:
+					NetworkManager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+				
+			# Flush the pending spawn, parenting, and destruction queues
+			network_entities_pending_spawn = []
+			network_entities_pending_reparenting = []
+			network_entities_pending_destruction = []
 """
 Client
 """
@@ -303,10 +306,13 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 		else:
 			ErrorManager.error("decode_entity_spawn_command: could not find parent entity!")
 	
+	entity_instance.cache_nodes()
+	
 	entity_instance.set_name("Entity")
 	entity_instance.set_network_master(network_master)
 	
 	var network_identity_node : Node = entity_instance.get_network_identity_node()
+	network_identity_node.cache_nodes()
 	network_identity_node.set_network_instance_id(instance_id)
 	network_identity_node.update_state(p_network_reader, true)
 	NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY, entity_instance, parent_instance)

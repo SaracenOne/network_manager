@@ -6,8 +6,11 @@ var stream_peer_buffer : StreamPeerBuffer = StreamPeerBuffer.new()
 static func encode_24_bit_value(p_value : int) -> PoolByteArray:
 	return PoolByteArray([(p_value & 0x000000ff), (p_value & 0x0000ff00) >> 8, (p_value & 0x00ff0000) >> 16])
 
-func get_raw_data() -> PoolByteArray:
-	return stream_peer_buffer.data_array
+func get_raw_data(p_size : int = 0) -> PoolByteArray:
+	if stream_peer_buffer.data_array.size() == p_size or p_size <= 0:
+		return stream_peer_buffer.data_array
+	else:
+		return stream_peer_buffer.data_array.subarray(0, p_size-1)
 
 func clear() -> void:
 	stream_peer_buffer.clear()
@@ -17,6 +20,9 @@ func get_position() -> int:
 	
 func get_size() -> int:
 	return stream_peer_buffer.get_size()
+	
+func resize(p_resize) -> void:
+	stream_peer_buffer.resize(p_resize)
 
 func seek(p_position : int) -> void:
 	if p_position > get_size():
@@ -28,8 +34,11 @@ func put_data(p_data : PoolByteArray) -> void:
 	if stream_peer_buffer.put_data(p_data) != OK:
 		printerr("put_data returned an error!")
 
-func put_writer(p_writer) -> void:
-	put_data(p_writer.stream_peer_buffer.data_array)
+func put_writer(p_writer, p_size : int = 0) -> void:
+	if p_writer.get_size() == p_size or p_size <= 0:
+		put_data(p_writer.stream_peer_buffer.data_array)
+	else:
+		put_data(p_writer.stream_peer_buffer.data_array.subarray(0, p_size-1))
 	
 func put_8(p_value : int) -> void:
 	stream_peer_buffer.put_8(p_value)
@@ -99,3 +108,7 @@ func put_basis(p_basis : Basis) -> void:
 func put_transform(p_transform : Transform) -> void:
 	put_basis(p_transform.basis)
 	put_vector3(p_transform.origin)
+
+func _init(p_size : int = 0) -> void:
+	if p_size > 0:
+		stream_peer_buffer.resize(p_size)
