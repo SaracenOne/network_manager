@@ -65,6 +65,3 @@ func _process(p_delta : float) -> void:
 			
 		if entity_node:
 			entity_node.get_logic_node().set_transform(Transform(Basis(current_rotation), current_origin))
-			
-func _ready():
-	entity_node = get_entity_node()
