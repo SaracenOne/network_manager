@@ -18,13 +18,13 @@ static func write_transform(p_writer : network_writer_const, p_transform : Trans
 	return p_writer
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	if entity_node.get_logic_node() == null:
+	if entity_node.get_simulation_logic_node() == null:
 		entity_node._ready()
 		
 	if p_initial_state:
 		pass
 		
-	var transform : Transform = entity_node.get_logic_node().get_transform()
+	var transform : Transform = entity_node.get_simulation_logic_node().get_transform()
 	p_writer = write_transform(p_writer, transform)
 	
 	return p_writer
@@ -41,7 +41,7 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 		current_origin = current_transform.origin
 		current_rotation = Quat(current_transform.basis)
 		if entity_node:
-			entity_node.get_logic_node().set_transform(current_transform)
+			entity_node.get_simulation_logic_node().set_transform(current_transform)
 	
 	return p_reader
 	
@@ -64,4 +64,4 @@ func _process(p_delta : float) -> void:
 			current_rotation = target_rotation
 			
 		if entity_node:
-			entity_node.get_logic_node().set_transform(Transform(Basis(current_rotation), current_origin))
+			entity_node.get_simulation_logic_node().set_transform(Transform(Basis(current_rotation), current_origin))

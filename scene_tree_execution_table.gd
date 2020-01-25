@@ -25,16 +25,16 @@ func _reparent_entity_instance_unsafe(p_instance : Node, p_parent : Node = null)
 		ErrorManager.error("reparent_entity_instance: entity not inside tree!")
 		
 	var last_global_transform : Transform = Transform()
-	if p_instance.logic_node:
-		last_global_transform = p_instance.logic_node.get_global_transform()
+	if p_instance.simulation_logic_node:
+		last_global_transform = p_instance.simulation_logic_node.get_global_transform()
 		
 	p_instance.get_parent().remove_child(p_instance)
 	
 	if p_parent:
 		p_parent.add_child(p_instance)
 		
-	if p_instance.logic_node:
-		p_instance.logic_node.set_global_transform(last_global_transform)
+	if p_instance.simulation_logic_node:
+		p_instance.simulation_logic_node.set_global_transform(last_global_transform)
 
 func _execute_scene_tree_execution_table_unsafe():
 	for entry in scene_tree_execution_table:
