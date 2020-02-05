@@ -10,6 +10,7 @@ var signal_table : Array = [
 	{"singleton":"EntityManager", "signal":"entity_added", "method":"_entity_added"},
 	{"singleton":"EntityManager", "signal":"entity_removed", "method":"_entity_removed"},
 	{"singleton":"NetworkManager", "signal":"network_process", "method":"_network_manager_process"},
+	{"singleton":"NetworkManager", "signal":"network_flush", "method":"_network_manager_flush"},
 ]
 
 signal spawn_state_for_new_client_ready(p_network_id, p_network_writer)
@@ -176,6 +177,14 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 		
 	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer)
 	
+func flush() -> void:
+	network_entities_pending_spawn = []
+	network_entities_pending_reparenting = []
+	network_entities_pending_destruction = []
+	
+func _network_manager_flush() -> void:
+	flush()
+	
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		if network_entities_pending_spawn.size() > 0 or network_entities_pending_reparenting.size() > 0 or network_entities_pending_destruction.size():
@@ -233,9 +242,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 					NetworkManager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
 				
 			# Flush the pending spawn, parenting, and destruction queues
-			network_entities_pending_spawn = []
-			network_entities_pending_reparenting = []
-			network_entities_pending_destruction = []
+			flush()
 """
 Client
 """

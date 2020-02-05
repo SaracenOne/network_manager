@@ -70,6 +70,7 @@ var is_server_authoritative : bool = true
 var session_master : int = -1
 
 signal network_process(p_delta)
+signal network_flush()
 signal reset_timers()
 signal game_hosted()
 
@@ -206,6 +207,8 @@ func force_close_connection() -> void:
 	if has_active_peer():
 		print("Closing connection...")
 		get_tree().multiplayer.set_network_peer(null)
+		
+	emit_signal("network_flush")
 
 	reset_session_data()
 
