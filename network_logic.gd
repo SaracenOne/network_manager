@@ -7,6 +7,7 @@ const network_writer_const = preload("res://addons/network_manager/network_write
 var cached_writer : network_writer_const = network_writer_const.new()
 export(int) var cached_writer_size = 0
 
+var received_data : bool = false
 var is_dirty : bool = true
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:

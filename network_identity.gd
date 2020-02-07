@@ -45,9 +45,6 @@ func update_state(p_reader : network_reader_const, p_initial_state : bool) -> ne
 func get_network_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 	
-func send_parent_entity_update() -> void:
-	NetworkManager.network_replication_manager.send_parent_entity_update(entity_node)
-	
 func _ready() -> void:
 	if !Engine.is_editor_hint():
 		entity_node = get_entity_node()

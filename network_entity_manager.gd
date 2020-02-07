@@ -60,17 +60,6 @@ static func read_entity_scene_id(p_reader : network_reader_const, p_networked_sc
 		return p_reader.get_u64()
 	else:
 		return p_reader.get_u8()
-	
-static func write_entity_parent_id(p_entity : entity_const, p_writer : network_writer_const) -> network_writer_const:
-	if p_entity.entity_parent:
-		p_writer.put_u32(p_entity.entity_parent.get_network_identity_node().network_instance_id)
-	else:
-		p_writer.put_u32(NULL_NETWORK_INSTANCE_ID)
-		
-	return p_writer
-	
-static func read_entity_parent_id(p_reader : network_reader_const) -> int:
-	return p_reader.get_u32()
 		
 static func write_entity_network_master(p_entity : entity_const, p_writer : network_writer_const) -> network_writer_const:
 	p_writer.put_u32(p_entity.get_network_master())
@@ -148,7 +137,7 @@ func _ready() -> void:
 	
 	ProjectSettings.add_property_info(networked_objects_property_info)
 	
-	if Engine.is_editor_hint() == false:					
+	if Engine.is_editor_hint() == false:
 		var network_scenes_config = ProjectSettings.get_setting("network/config/networked_scenes")
 		if typeof(network_scenes_config) != TYPE_STRING_ARRAY:
 			networked_scenes = Array()

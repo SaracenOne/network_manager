@@ -408,7 +408,7 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 		if network_reader.is_eof():
 			break
 			
-		if command == network_constants_const.SPAWN_ENTITY_COMMAND or command == network_constants_const.DESTROY_ENTITY_COMMAND or command == network_constants_const.SET_PARENT_ENTITY_COMMAND or command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
+		if command == network_constants_const.SPAWN_ENTITY_COMMAND or command == network_constants_const.DESTROY_ENTITY_COMMAND or command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			network_reader = network_replication_manager.decode_replication_buffer(p_id, network_reader, command)
 		elif command == network_constants_const.UPDATE_ENTITY_COMMAND:
 			network_reader = network_state_manager.decode_state_buffer(p_id, network_reader, command)

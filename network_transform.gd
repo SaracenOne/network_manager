@@ -16,6 +16,10 @@ static func write_transform(p_writer : network_writer_const, p_transform : Trans
 	p_writer.put_quat(Quat(p_transform.basis))
 	
 	return p_writer
+	
+func update_transform(p_transform : Transform) -> void:
+	if entity_node:
+		entity_node.get_simulation_logic_node().set_transform(p_transform, true)
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
 	if entity_node.get_simulation_logic_node() == null:
@@ -30,6 +34,8 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	return p_writer
 	
 func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
+	received_data = true
+	
 	var origin : Vector3 = p_reader.get_vector3()
 	var rotation : Quat = p_reader.get_quat()
 	
@@ -40,28 +46,36 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 		var current_transform : Transform = Transform(Basis(rotation), origin)
 		current_origin = current_transform.origin
 		current_rotation = Quat(current_transform.basis)
-		if entity_node:
-			entity_node.get_simulation_logic_node().set_transform(current_transform)
 	
 	return p_reader
 	
 func _process(p_delta : float) -> void:
 	if is_inside_tree() and !is_network_master():
-		var distance : float = current_origin.distance_to(target_origin)
-		
-		if snap_threshold > 0.0 and distance < snap_threshold:
-			if origin_interpolation_factor > 0.0:
-				current_origin = current_origin.linear_interpolate(target_origin, origin_interpolation_factor * p_delta)
-			else:
-				current_origin = target_origin
-				
-			if rotation_interpolation_factor > 0.0:
-				current_rotation = current_rotation.slerp(target_rotation, rotation_interpolation_factor * p_delta)
-			else:
-				current_rotation = target_rotation
-		else:
-			current_origin = target_origin
-			current_rotation = target_rotation
-			
 		if entity_node:
-			entity_node.get_simulation_logic_node().set_transform(Transform(Basis(current_rotation), current_origin))
+			var distance : float = current_origin.distance_to(target_origin)
+			if entity_node.entity_parent_state != entity_node.ENTITY_PARENT_STATE_INVALID \
+			and snap_threshold > 0.0 and distance < snap_threshold:
+				# If the parent has changed in the last frame, current origin and rotation from the entity
+				if entity_node.entity_parent_state == entity_node.ENTITY_PARENT_STATE_CHANGED:
+					var entity_local_transform : Transform = entity_node.get_transform()
+					current_origin = entity_local_transform.origin
+					current_rotation = Quat(entity_local_transform.basis)
+					
+				if origin_interpolation_factor > 0.0:
+					current_origin = current_origin.linear_interpolate(target_origin, origin_interpolation_factor * p_delta)
+				else:
+					current_origin = target_origin
+				if rotation_interpolation_factor > 0.0:
+					current_rotation = current_rotation.slerp(target_rotation, rotation_interpolation_factor * p_delta)
+				else:
+					current_rotation = target_rotation
+				
+			if entity_node.entity_parent_state == entity_node.ENTITY_PARENT_STATE_CHANGED:
+				entity_node.entity_parent_state = entity_node.ENTITY_PARENT_STATE_OK
+				
+			call_deferred("update_transform", Transform(Basis(current_rotation), current_origin))
+
+func _ready():
+	if Engine.is_editor_hint() == false:
+		if received_data:
+			call_deferred("update_transform", Transform(Basis(current_rotation), current_origin))

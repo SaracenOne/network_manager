@@ -70,12 +70,13 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				var entity_update_writers : Array = []
 				for entity in entities:
 					if entity.is_inside_tree():
-						### get this working
-						if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
-							entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
-						else:
-							if (entity.get_network_master() == p_id):
+						var entity_master : int = entity.get_network_master()
+						if synced_peer != entity_master:
+							if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
 								entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
+							else:
+								if (entity_master == p_id):
+									entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
 								
 				# Put the update commands into the unreliable channel
 				for entity_update_writer in entity_update_writers:
