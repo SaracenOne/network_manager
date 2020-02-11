@@ -57,3 +57,9 @@ func _ready() -> void:
 		entity_node.add_to_group("NetworkedEntities")
 		if entity_node.connect("tree_exited", self, "on_exit") != OK:
 			ErrorManager.error("Could not connect tree_exited!")
+			
+func _threaded_instance_setup(p_instance_id : int, p_network_reader : Reference) -> void:
+	cache_nodes()
+	
+	set_network_instance_id(p_instance_id)
+	update_state(p_network_reader, true)

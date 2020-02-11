@@ -265,15 +265,11 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 	var packed_scene : PackedScene = get_packed_scene_for_path(scene_path)
 	var entity_instance : entity_const = packed_scene.instance()
 	
-	entity_instance.cache_nodes()
+	entity_instance._threaded_instance_setup(instance_id, p_network_reader)
 	
 	entity_instance.set_name("Entity")
 	entity_instance.set_network_master(network_master)
 	
-	var network_identity_node : Node = entity_instance.get_network_identity_node()
-	network_identity_node.cache_nodes()
-	network_identity_node.set_network_instance_id(instance_id)
-	network_identity_node.update_state(p_network_reader, true)
 	NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY, entity_instance, null)
 	
 	return p_network_reader
