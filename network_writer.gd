@@ -79,6 +79,20 @@ func put_float(p_float : float) -> void:
 func put_double(p_double : float) -> void:
 	stream_peer_buffer.put_double(p_double)
 	
+func put_8bit_pascal_string(p_value : String, p_utf8 : bool) -> void:
+	var buffer : PoolByteArray = PoolByteArray()
+	if p_utf8:
+		buffer = p_value.to_utf8()
+	else:
+		buffer = p_value.to_ascii()
+		
+	if buffer.size() >= 255:
+		printerr("Pascal string too long!")
+		put_8(0)
+	else:
+		put_8(buffer.size())
+		put_data(buffer)
+	
 func put_vector2(p_vector : Vector2) -> void:
 	put_float(p_vector.x)
 	put_float(p_vector.y)

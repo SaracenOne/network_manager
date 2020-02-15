@@ -107,6 +107,18 @@ func get_double() -> float:
 		return 0.0
 	return stream_peer_buffer.get_double()
 	
+func get_8bit_pascal_string(p_utf8 : bool) -> String:
+	var string : String = ""
+	var size : int = get_8()
+	if size > 0:
+		var buffer : PoolByteArray = get_buffer(size)
+		if p_utf8:
+			string = buffer.get_string_from_utf8()
+		else:
+			string = buffer.get_string_from_ascii()
+			
+	return string
+	
 func get_buffer(p_size) -> PoolByteArray:
 	if stream_peer_buffer.get_available_bytes() < p_size:
 		eof_reached = true

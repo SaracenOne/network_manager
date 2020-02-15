@@ -7,6 +7,8 @@ var target_rotation : Quat = Quat()
 var current_origin : Vector3 = Vector3()
 var current_rotation : Quat = Quat()
 
+signal transform_updated(p_transform)
+
 export(float) var origin_interpolation_factor : float = 0.0
 export(float) var rotation_interpolation_factor : float = 0.0
 export(float) var snap_threshold : float = 0.0
@@ -18,13 +20,9 @@ static func write_transform(p_writer : network_writer_const, p_transform : Trans
 	return p_writer
 	
 func update_transform(p_transform : Transform) -> void:
-	if entity_node:
-		entity_node.get_simulation_logic_node().set_transform(p_transform, true)
+	emit_signal("transform_updated", p_transform)
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	if entity_node.get_simulation_logic_node() == null:
-		entity_node._ready()
-		
 	if p_initial_state:
 		pass
 		
