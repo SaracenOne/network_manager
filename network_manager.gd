@@ -135,7 +135,7 @@ func is_rpc_sender_id_server() -> bool:
 
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool) -> bool:
 	if has_active_peer():
-		printerr("Network peer already established")
+		printerr("Network peer already established!")
 		return false
 	
 	reset_session_data()
@@ -200,6 +200,9 @@ func reset_session_data() -> void:
 	active_port = -1
 	client_state = validation_state_enum.VALIDATION_STATE_NONE
 	peers = []
+	valid_peers = []
+	is_server_authoritative = true
+	session_master = -1
 	
 	emit_signal("reset_timers")
 	
