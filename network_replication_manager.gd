@@ -82,6 +82,14 @@ func create_entity_destroy_command(p_entity : entity_const) -> network_writer_co
 	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
 
 	return network_writer
+
+func create_entity_request_master_command(p_entity : entity_const) -> network_writer_const:
+	var network_writer : network_writer_const = network_writer_const.new()
+	var network_entity_manager : Node = NetworkManager.network_entity_manager
+
+	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
+
+	return network_writer
 	
 func create_entity_transfer_master_command(p_entity : entity_const) -> network_writer_const:
 	var network_writer : network_writer_const = network_writer_const.new()
@@ -101,6 +109,9 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 		network_constants_const.DESTROY_ENTITY_COMMAND:
 			network_writer.put_u8(network_constants_const.DESTROY_ENTITY_COMMAND)
 			network_writer.put_writer(create_entity_destroy_command(p_entity))
+		network_constants_const.REQUEST_ENTITY_MASTER_COMMAND:
+			network_writer.put_u8(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND)
+			network_writer.put_writer(create_entity_request_master_command(p_entity))
 		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			network_writer.put_u8(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND)
 			network_writer.put_writer(create_entity_transfer_master_command(p_entity))
@@ -267,7 +278,6 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 	
 	entity_instance._threaded_instance_setup(instance_id, p_network_reader)
 	
-	entity_instance.set_name("Entity")
 	entity_instance.set_network_master(network_master)
 	
 	NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY, entity_instance, null)
@@ -303,13 +313,43 @@ func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : 
 	return p_network_reader
 
 	
+func decode_entity_request_master_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
+	var network_entity_manager : Node = NetworkManager.network_entity_manager
+	
+	var valid_sender_id = false
+
+	if NetworkManager.is_server():
+		valid_sender_id = true
+
+	if valid_sender_id == false:
+		ErrorManager.error("decode_entity_request_master_command: request master command sent directly to client!")
+		return null
+		
+	if p_network_reader.is_eof():
+		ErrorManager.error("decode_entity_request_master_command: eof!")
+		return null
+		
+	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
+	if instance_id <= network_entity_manager.NULL_NETWORK_INSTANCE_ID:
+		ErrorManager.error("decode_entity_request_master_command: eof!")
+		return null
+	
+	if network_entity_manager.network_instance_ids.has(instance_id):
+		var entity_instance : Node = network_entity_manager.network_instance_ids[instance_id].get_entity_node()
+		entity_instance.process_master_request(p_packet_sender_id)
+	else:
+		ErrorManager.error("Attempted to request master of invalid node")
+	
+	return p_network_reader
+	
+	
 func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	
 	var valid_sender_id = false
 
 	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
-		valid_sender_id = true	
+		valid_sender_id = true
 
 	if valid_sender_id == false:
 		ErrorManager.error("decode_entity_transfer_master_command: recieved transfer master command from non server ID!")
@@ -335,7 +375,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 	
 	if network_entity_manager.network_instance_ids.has(instance_id):
 		var entity_instance : Node = network_entity_manager.network_instance_ids[instance_id].get_entity_node()
-		entity_instance.set_network_master(network_master)
+		entity_instance.process_master_request(network_master)
 	else:
 		ErrorManager.error("Attempted to transfer master of invalid node")
 	
@@ -348,6 +388,8 @@ func decode_replication_buffer(p_packet_sender_id : int, p_network_reader : netw
 			p_network_reader = decode_entity_spawn_command(p_packet_sender_id, p_network_reader)
 		network_constants_const.DESTROY_ENTITY_COMMAND:
 			p_network_reader = decode_entity_destroy_command(p_packet_sender_id, p_network_reader)
+		network_constants_const.REQUEST_ENTITY_MASTER_COMMAND:
+			p_network_reader = decode_entity_request_master_command(p_packet_sender_id, p_network_reader)
 		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			p_network_reader = decode_entity_transfer_master_command(p_packet_sender_id, p_network_reader)
 	
