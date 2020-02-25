@@ -46,6 +46,8 @@ var network_entity_manager : Node = null
 var join_ip : String = LOCALHOST_IP
 var join_port : int = 7777
 
+var received_packet_buffer_count : Dictionary = {}
+
 # Server
 var host_port : int = 7777 # Configuration
 
@@ -203,6 +205,8 @@ func reset_session_data() -> void:
 	valid_peers = []
 	is_server_authoritative = true
 	session_master = -1
+	
+	received_packet_buffer_count = {}
 	
 	emit_signal("reset_timers")
 	
@@ -402,14 +406,19 @@ func server_kick_player(p_id : int) -> void:
 				valid_peers.erase(p_id)
 			
 			# TODO register disconnection
-
+	
 func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
+	if OS.is_stdout_verbose():
+		ErrorManager.printl("--- Packet received from {id} ---".format({"id":p_id}))
+	
 	var network_reader : network_reader_const = network_reader_const.new(p_buffer)
 	
 	while network_reader:
 		var command = network_reader.get_u8()
 		if network_reader.is_eof():
 			break
+			
+		var start_position : int = network_reader.get_position()
 			
 		if command == network_constants_const.SPAWN_ENTITY_COMMAND or command == network_constants_const.DESTROY_ENTITY_COMMAND or command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			network_reader = network_replication_manager.decode_replication_buffer(p_id, network_reader, command)
@@ -418,9 +427,28 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 		elif command == network_constants_const.VOICE_COMMAND:
 			network_reader = network_voice_manager.decode_voice_buffer(p_id, network_reader, command)
 		else:
-			printerr("Invalid command: " + str(command))
+			ErrorManager.error("Invalid command: {command}".format({"command":str(command)}))
+		
+		var end_position : int = network_reader.get_position()
+		
+		if OS.is_stdout_verbose():
+			var command_string : String = network_constants_const.get_string_for_command(command)
+			var command_size : int = end_position - start_position
+			
+			ErrorManager.printl("Processed {command_string}: {command_size} bytes".format(
+			 {"command_string":command_string, "command_size":str(command_size)}))
 			
 	network_entity_manager.scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
+	
+	if !received_packet_buffer_count.has(p_id):
+		received_packet_buffer_count[p_id] = 0
+	
+	if OS.is_stdout_verbose():
+		var size : int = network_reader.get_position()
+		ErrorManager.printl("--- Finished processing packet {count} from peer {id}, packet size: {size} ---".format(
+			 {"count":received_packet_buffer_count[p_id], "id":p_id, "size":size}))
+	
+	received_packet_buffer_count[p_id] += 1
 
 func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) -> void:
 	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)

@@ -39,7 +39,12 @@ func create_entity_update_command(p_entity : entity_const) -> network_writer_con
 
 	network_writer = NetworkManager.network_entity_manager.write_entity_instance_id(p_entity, network_writer)
 	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(null, false)
-	network_writer.put_u32(entity_state.get_size())
+	var entity_state_size = entity_state.get_position()
+	if entity_state_size >= 0xffff:
+		ErrorManager.error("State data exceeds 16 bits!")
+	else:
+		entity_state_size = 0
+	network_writer.put_u16(entity_state.get_position())
 	network_writer.put_writer(entity_state, entity_state.get_position())
 
 	return network_writer
@@ -105,7 +110,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 		ErrorManager.error("decode_entity_update_command: eof!")
 		return null
 	
-	var entity_state_size : int = p_network_reader.get_u32()
+	var entity_state_size : int = p_network_reader.get_u16()
 	if network_entity_manager.network_instance_ids.has(instance_id):
 		var network_identity_instance : Node = network_entity_manager.network_instance_ids[instance_id]
 		var network_instance_master : int = network_identity_instance.get_network_master()

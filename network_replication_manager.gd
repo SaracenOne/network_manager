@@ -153,9 +153,9 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	var entity_spawn_writers : Array = []
 	
 	print("Spawn state = [")
-	for foo in entities:
-		if foo.is_inside_tree() and not network_entities_pending_spawn.has(foo):
-			print("{ " + foo.get_name() + " }")
+	for entity in entities:
+		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
+			print("{ " + entity.get_name() + " }")
 	print("] for " + str(p_network_id))
 	
 	for entity in entities:
@@ -165,6 +165,8 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	var network_writer : network_writer_const = network_writer_const.new()
 	for entity_spawn_writer in entity_spawn_writers:
 		network_writer.put_writer(entity_spawn_writer)
+		
+	print("Spawn state size : " + str(network_writer.get_size()))
 		
 	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer)
 	
@@ -383,6 +385,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 
 		
 func decode_replication_buffer(p_packet_sender_id : int, p_network_reader : network_reader_const, p_command : int) -> network_reader_const:
+	
 	match p_command:
 		network_constants_const.SPAWN_ENTITY_COMMAND:
 			p_network_reader = decode_entity_spawn_command(p_packet_sender_id, p_network_reader)
@@ -392,6 +395,8 @@ func decode_replication_buffer(p_packet_sender_id : int, p_network_reader : netw
 			p_network_reader = decode_entity_request_master_command(p_packet_sender_id, p_network_reader)
 		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			p_network_reader = decode_entity_transfer_master_command(p_packet_sender_id, p_network_reader)
+		_:
+			ErrorManager.error("Unknown Entity replication command")
 	
 	return p_network_reader
 	
