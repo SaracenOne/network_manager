@@ -45,18 +45,29 @@ func update_state(p_reader : network_reader_const, p_initial_state : bool) -> ne
 func get_network_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 	
+func update_name() -> void:
+	# Make sure this entity is correctly named
+	if NetworkManager.is_server():
+		get_entity_node().set_name("NetEntity_{instance_id}".format({"instance_id":network_instance_id}))
+	
 func _ready() -> void:
 	if !Engine.is_editor_hint():
 		entity_node = get_entity_node()
 		
 		if NetworkManager.is_server():
 			set_network_instance_id(NetworkManager.network_entity_manager.get_next_network_id())
-			
+		else:
+			# This is a bad approach, we should be purging entities for the clients
+			# BEFORE they are instantiated, but this will do for now...
+			if !get_entity_node().get_name().begins_with("NetEntity"):
+				get_entity_node().queue_free()
+				return
+		
 		set_network_scene_id(NetworkManager.network_replication_manager.get_network_scene_id_from_path(get_entity_node().filename))
 		
 		entity_node.add_to_group("NetworkedEntities")
-		if entity_node.connect("tree_exited", self, "on_exit") != OK:
-			ErrorManager.error("Could not connect tree_exited!")
+		if entity_node.connect("entity_deletion", self, "on_exit") != OK:
+			ErrorManager.error("Could not connect entity_deletion!")
 			
 func _threaded_instance_setup(p_instance_id : int, p_network_reader : Reference) -> void:
 	cache_nodes()

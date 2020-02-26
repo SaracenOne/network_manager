@@ -42,14 +42,14 @@ func _entity_removed(p_entity : entity_const) -> void:
 func get_entity_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 	
-func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
+func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = p_packed_scene.instance()
 	instance.set_name(p_name)
 	instance.set_network_master(p_master_id)
 	
 	return instance
 	
-func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "Entity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
+func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = create_entity_instance(p_packed_scene, p_name, p_master_id)
 	NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY, instance, null)
 	
@@ -280,6 +280,7 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 	
 	entity_instance._threaded_instance_setup(instance_id, p_network_reader)
 	
+	entity_instance.set_name("NetEntity_{instance_id}".format({"instance_id":entity_instance.network_identity_node.network_instance_id}))
 	entity_instance.set_network_master(network_master)
 	
 	NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY, entity_instance, null)

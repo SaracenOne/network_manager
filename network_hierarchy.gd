@@ -44,9 +44,6 @@ static func read_entity_attachment_id(p_reader : network_reader_const) -> int:
 	return decode_attachment_id(p_reader)
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	if p_initial_state:
-		pass
-		
 	p_writer = write_entity_parent_id(p_writer, entity_node)
 	if entity_node.entity_parent:
 		write_entity_attachment_id(p_writer, entity_node)
@@ -65,11 +62,12 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 func process_parenting():
 	if entity_node:
 		var entity_parent = entity_node.entity_parent
+		
 		var last_parent_id = network_entity_manager_const.NULL_NETWORK_INSTANCE_ID
 		var last_attachment_id = entity_node.attachment_id
 		
 		if entity_parent:
-			last_parent_id = entity_node.network_identity_node.network_instance_id
+			last_parent_id = entity_parent.network_identity_node.network_instance_id
 		
 		if parent_id != last_parent_id or attachment_id != last_attachment_id:
 			if parent_id != network_entity_manager_const.NULL_NETWORK_INSTANCE_ID:
@@ -77,15 +75,12 @@ func process_parenting():
 					var network_identity : Node = NetworkManager.network_entity_manager.get_network_instance_identity(parent_id)
 					if network_identity:
 						var parent_instance : Node = network_identity.get_entity_node()
-						entity_node.entity_parent = parent_instance
 						entity_node.entity_parent_state = entity_node.ENTITY_PARENT_STATE_CHANGED
 						_reparent_entity_instance(entity_node, parent_instance, attachment_id)
 				else:
-					entity_node.entity_parent = null
 					entity_node.entity_parent_state = entity_node.ENTITY_PARENT_STATE_INVALID
 					_reparent_entity_instance(entity_node, null, attachment_id)
 			else:
-				entity_node.entity_parent = null
 				entity_node.entity_parent_state = entity_node.ENTITY_PARENT_STATE_CHANGED
 				_reparent_entity_instance(entity_node, null, attachment_id)
 	received_data = false
