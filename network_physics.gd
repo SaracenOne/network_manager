@@ -43,6 +43,9 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	
 	return p_reader
 
+func _network_process(_delta: float) -> void:
+	._network_process(_delta)
+
 func _ready():
 	if Engine.is_editor_hint() == false:
 		if received_data:

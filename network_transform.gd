@@ -13,11 +13,15 @@ export(float) var origin_interpolation_factor : float = 0.0
 export(float) var rotation_interpolation_factor : float = 0.0
 export(float) var snap_threshold : float = 0.0
 
-static func write_transform(p_writer : network_writer_const, p_transform : Transform) -> network_writer_const:
+static func write_transform(p_writer : network_writer_const, p_transform : Transform) -> void:
 	p_writer.put_vector3(p_transform.origin)
-	p_writer.put_quat(Quat(p_transform.basis))
+	p_writer.put_quat(p_transform.basis.get_rotation_quat())
 	
-	return p_writer
+static func read_transform(p_reader : network_reader_const) -> Transform:
+	var origin : Vector3 = p_reader.get_vector3()
+	var rotation : Quat = p_reader.get_quat()
+	
+	return Transform(Basis(rotation), origin)
 	
 func update_transform(p_transform : Transform) -> void:
 	emit_signal("transform_updated", p_transform)
@@ -27,15 +31,17 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 		pass
 		
 	var transform : Transform = entity_node.get_simulation_logic_node().get_transform()
-	p_writer = write_transform(p_writer, transform)
+	write_transform(p_writer, transform)
 	
 	return p_writer
 	
 func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
 	received_data = true
 	
-	var origin : Vector3 = p_reader.get_vector3()
-	var rotation : Quat = p_reader.get_quat()
+	var transform : Transform = read_transform(p_reader)
+	
+	var origin : Vector3 = transform.origin
+	var rotation : Quat = transform.basis.get_rotation_quat()
 	
 	target_origin = origin
 	target_rotation = rotation
@@ -47,7 +53,7 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	
 	return p_reader
 	
-func _process(p_delta : float) -> void:
+func interpolate_transform(p_delta : float) -> void:
 	if is_inside_tree() and !is_network_master():
 		if entity_node:
 			var distance : float = current_origin.distance_to(target_origin)
@@ -72,6 +78,11 @@ func _process(p_delta : float) -> void:
 				entity_node.entity_parent_state = entity_node.ENTITY_PARENT_STATE_OK
 				
 			call_deferred("update_transform", Transform(Basis(current_rotation), current_origin))
+
+func _network_process(_delta: float) -> void:
+	._network_process(_delta)
+	if received_data:
+		interpolate_transform(_delta)
 
 func _ready():
 	if Engine.is_editor_hint() == false:

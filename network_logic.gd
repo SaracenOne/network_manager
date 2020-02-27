@@ -62,5 +62,13 @@ func _threaded_instance_setup(p_instance_id : int, p_network_reader : Reference)
 	for child in get_children():
 		child._threaded_instance_setup(p_instance_id, p_network_reader)
 
+func _network_process(_delta: float) -> void:
+	for child in get_children():
+		child._network_process(_delta)
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint() == false:
+		_network_process(_delta)
+
 func _ready() -> void:
 	cached_writer.resize(cached_writer_size)

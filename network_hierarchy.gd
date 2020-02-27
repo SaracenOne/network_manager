@@ -85,7 +85,8 @@ func process_parenting():
 				_reparent_entity_instance(entity_node, null, attachment_id)
 	received_data = false
 	
-func _process(_delta: float) -> void:
+func _network_process(_delta: float) -> void:
+	._network_process(_delta)
 	if received_data:
 		process_parenting()
 
