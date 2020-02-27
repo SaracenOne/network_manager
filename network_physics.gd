@@ -11,7 +11,7 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	if p_initial_state:
 		p_writer.put_float(physics_node_root.mass)
 	
-	var sleeping : bool = physics_node_root.sleeping
+	var sleeping : bool = physics_node_root.sleeping or physics_node_root.mode != RigidBody.MODE_RIGID
 	p_writer.put_8(sleeping)
 	if sleeping == false:
 		var linear_velocity : Vector3 = physics_node_root.linear_velocity
