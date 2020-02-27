@@ -129,6 +129,12 @@ func has_active_peer() -> bool:
 func is_server() -> bool:
 	return has_active_peer() == false or get_tree().multiplayer.is_network_server()
 	
+func is_session_master() -> bool:
+	if is_server_authoritative:
+		return is_server()
+	else:
+		return session_master == get_current_peer_id()
+	
 func is_server_authoritative() -> bool:
 	return is_server_authoritative
 	
@@ -420,7 +426,10 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 			
 		var start_position : int = network_reader.get_position()
 			
-		if command == network_constants_const.SPAWN_ENTITY_COMMAND or command == network_constants_const.DESTROY_ENTITY_COMMAND or command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
+		if command == network_constants_const.SPAWN_ENTITY_COMMAND or \
+		command == network_constants_const.DESTROY_ENTITY_COMMAND or \
+		command == network_constants_const.REQUEST_ENTITY_MASTER_COMMAND or \
+		command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			network_reader = network_replication_manager.decode_replication_buffer(p_id, network_reader, command)
 		elif command == network_constants_const.UPDATE_ENTITY_COMMAND:
 			network_reader = network_state_manager.decode_state_buffer(p_id, network_reader, command)

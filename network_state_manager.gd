@@ -117,7 +117,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 		var invalid_sender_id = false
 		if NetworkManager.is_server_authoritative():
 			# Only the server will accept state updates for entities directly and other clients will accept them from the host
-			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or (p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID and network_instance_master != NetworkManager.get_current_peer_id()):
 				network_identity_instance.update_state(p_network_reader, false)
 			else:
 				invalid_sender_id = true
@@ -128,8 +128,8 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 			else:
 				invalid_sender_id = true
 			
-		if invalid_sender_id == true:
-			ErrorManager.error("Invalid state update sender id {packet_sender_id}!".format({"packet_sender_id":str(p_packet_sender_id)}))
+		#if invalid_sender_id == true:
+		#	ErrorManager.error("Invalid state update sender id {packet_sender_id}!".format({"packet_sender_id":str(p_packet_sender_id)}))
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
 	
