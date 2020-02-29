@@ -96,6 +96,10 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 		
 		var voice_buffers : Array = GodotSpeech.copy_and_clear_buffers()
 		for voice_buffer in voice_buffers:
+			# If muted, give it an empty array
+			if GroupsAudioManager.muted:
+				voice_buffer = PoolByteArray()
+			
 			for synced_peer in synced_peers:
 				var unreliable_network_writer : network_writer_const = network_writer_const.new()
 				
