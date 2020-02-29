@@ -1,5 +1,6 @@
 extends Node
 
+# A list of all the network commands which can be sent or received.
 enum {
 	UPDATE_ENTITY_COMMAND = 0,
 	SPAWN_ENTITY_COMMAND,
@@ -9,6 +10,7 @@ enum {
 	VOICE_COMMAND
 }
 
+# Returns a string name for a corresponding network command
 static func get_string_for_command(p_id : int) -> String:
 	var command_string_table : Dictionary = {
 		UPDATE_ENTITY_COMMAND:"UpdateEntityCommand",
