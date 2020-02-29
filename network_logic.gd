@@ -10,7 +10,7 @@ var cached_writer : network_writer_const = network_writer_const.new()
 # The size of the cached writer
 export(int) var cached_writer_size = 0
 
-# Flag to indicate whether data has 
+# Flag to indicate whether data has been loaded for this node
 var received_data : bool = false
 
 # Indicating whether reserialise entity data or use the results
