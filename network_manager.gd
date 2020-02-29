@@ -362,7 +362,7 @@ master func requested_server_info(p_client_info: Dictionary) -> void:
 	else:
 		peer_server_data[rpc_sender_id].validation_state = validation_state_enum.VALIDATION_STATE_INFO_SENT
 		peer_server_data[rpc_sender_id].time_since_last_update = 0.0
-		emit_signal("requested_server_info", rpc_sender_id)
+		emit_signal("requested_server_info", rpc_sender_id, p_client_info)
 		
 # Called by the server 
 puppet func received_server_info(p_server_info : Dictionary) -> void:
@@ -379,7 +379,7 @@ master func requested_server_state(p_client_info: Dictionary) -> void:
 	else:
 		peer_server_data[rpc_sender_id].validation_state = validation_state_enum.VALIDATION_STATE_STATE_SENT
 		peer_server_data[rpc_sender_id].time_since_last_update = 0.0
-		emit_signal("requested_server_state", rpc_sender_id)
+		emit_signal("requested_server_state", rpc_sender_id, p_client_info)
 		
 puppet func received_server_state(p_state : PoolByteArray) -> void:
 	print("received_server_state...")
