@@ -49,7 +49,7 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	if p_initial_state or origin_interpolation_factor == 0.0:
 		var current_transform : Transform = Transform(Basis(rotation), origin)
 		current_origin = current_transform.origin
-		current_rotation = Quat(current_transform.basis)
+		current_rotation = current_transform.basis.get_rotation_quat()
 	
 	return p_reader
 	
@@ -63,7 +63,7 @@ func interpolate_transform(p_delta : float) -> void:
 				if entity_node.entity_parent_state == entity_node.ENTITY_PARENT_STATE_CHANGED:
 					var entity_local_transform : Transform = entity_node.get_transform()
 					current_origin = entity_local_transform.origin
-					current_rotation = Quat(entity_local_transform.basis)
+					current_rotation = entity_local_transform.basis.get_rotation_quat()
 					
 				if origin_interpolation_factor > 0.0:
 					current_origin = current_origin.linear_interpolate(target_origin, origin_interpolation_factor * p_delta)
