@@ -35,8 +35,8 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	var linear_velocity : Vector3 = Vector3()
 	var angular_velocity : Vector3 = Vector3()
 	if sleeping == false:
-		linear_velocity = p_reader.get_vector3()
-		angular_velocity = p_reader.get_vector3()
+		linear_velocity = math_funcs_const.sanitise_vec3(p_reader.get_vector3())
+		angular_velocity = math_funcs_const.sanitise_vec3(p_reader.get_vector3())
 	
 	physics_node_root.linear_velocity = linear_velocity
 	physics_node_root.angular_velocity = angular_velocity

@@ -18,8 +18,8 @@ static func write_transform(p_writer : network_writer_const, p_transform : Trans
 	p_writer.put_quat(p_transform.basis.get_rotation_quat())
 	
 static func read_transform(p_reader : network_reader_const) -> Transform:
-	var origin : Vector3 = p_reader.get_vector3()
-	var rotation : Quat = p_reader.get_quat()
+	var origin : Vector3 = math_funcs_const.sanitise_vec3(p_reader.get_vector3())
+	var rotation : Quat = math_funcs_const.sanitise_quat(p_reader.get_quat())
 	
 	return Transform(Basis(rotation), origin)
 	
