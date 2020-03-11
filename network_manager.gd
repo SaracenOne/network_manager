@@ -438,14 +438,16 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 		else:
 			ErrorManager.error("Invalid command: {command}".format({"command":str(command)}))
 		
-		var end_position : int = network_reader.get_position()
-		
 		if OS.is_stdout_verbose():
-			var command_string : String = network_constants_const.get_string_for_command(command)
-			var command_size : int = end_position - start_position
-			
-			ErrorManager.printl("Processed {command_string}: {command_size} bytes".format(
-			 {"command_string":command_string, "command_size":str(command_size)}))
+			if network_reader:
+				var end_position : int = network_reader.get_position()
+				var command_string : String = network_constants_const.get_string_for_command(command)
+				var command_size : int = end_position - start_position
+				
+				ErrorManager.printl("Processed {command_string}: {command_size} bytes".format(
+				 {"command_string":command_string, "command_size":str(command_size)}))
+			else:
+				ErrorManager.printl("Processed NULL")
 			
 	network_entity_manager.scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
 	

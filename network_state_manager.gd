@@ -87,8 +87,8 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				for entity_update_writer in entity_update_writers:
 					network_writer_state.put_writer(entity_update_writer)
 						
-				var full_raw_data : PoolByteArray = network_writer_state.stream_peer_buffer.data_array
 				var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
+				
 				if network_writer_state.get_position() > 0:
 					NetworkManager.send_packet(raw_data, synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 			if NetworkManager.is_server():
