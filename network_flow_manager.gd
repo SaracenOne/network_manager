@@ -60,6 +60,20 @@ func send_packet_queue(p_packet_queue : Array, p_transfer_mode : int):
 func sort_packet_queue_by_time(a, b):
 	return a.time <= b.time
 
+func ordered_inserted(p_packet : Reference, p_time_sorted_queue : Array, p_packet_time : float):
+	if p_time_sorted_queue.size():
+		var packet_inserted : bool = false
+		for i in range(0, p_time_sorted_queue.size()):
+			if p_packet_time < p_time_sorted_queue[i].time:
+				p_time_sorted_queue.insert(i, p_packet)
+				packet_inserted = true
+				
+		# If the packet was not inserted, put it in the end of the queue
+		if packet_inserted == false:
+			p_time_sorted_queue.append(p_packet)
+	else:
+		p_time_sorted_queue.append(p_packet)
+
 func setup_and_send_ordered_queue(p_time : float, p_queue : Array, p_time_sorted_queue : Array, p_packet_type : int) -> Array:
 	for packet in p_queue:
 		if p_packet_type != NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE:
@@ -69,7 +83,8 @@ func setup_and_send_ordered_queue(p_time : float, p_queue : Array, p_time_sorted
 		var first_packet_time : float = p_time + min_latency + randf() * (max_latency-min_latency)
 		match p_packet_type:
 			NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE:
-				p_time_sorted_queue.append(PendingPacketTimed.new(packet.id, packet.ref_pool, first_packet_time))
+				var new_packet : Reference = PendingPacketTimed.new(packet.id, packet.ref_pool, first_packet_time)
+				ordered_inserted(new_packet, p_time_sorted_queue, first_packet_time)
 			NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED:
 				var latest_time : float = 0.0
 				if p_time_sorted_queue.size() > 0:
@@ -86,17 +101,14 @@ func setup_and_send_ordered_queue(p_time : float, p_queue : Array, p_time_sorted
 			var dup_packet_time : float = p_time + min_latency + randf() * (max_latency-min_latency)
 			match p_packet_type:
 				NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE:
-					p_time_sorted_queue.append(PendingPacketTimed.new(packet.id, packet.ref_pool, dup_packet_time))
+					var new_packet : Reference = PendingPacketTimed.new(packet.id, packet.ref_pool, dup_packet_time)
+					ordered_inserted(new_packet, p_time_sorted_queue, dup_packet_time)
 				NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED:
 					var latest_time : float = 0.0
 					if p_time_sorted_queue.size() > 0:
 						latest_time = p_time_sorted_queue.back().time
 					if dup_packet_time >= latest_time:
 						p_time_sorted_queue.append(PendingPacketTimed.new(packet.id, packet.ref_pool, dup_packet_time))
-
-	if p_packet_type == NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE:
-		if min_latency != max_latency:
-			p_time_sorted_queue.sort_custom(self, "sort_packet_queue_by_time")
 
 	var current_queue : Array = p_time_sorted_queue.duplicate()
 	for packet in current_queue:

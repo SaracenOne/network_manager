@@ -86,7 +86,7 @@ func decode_voice_command(
 				encoded_voice,
 				true)
 				
-				NetworkManager.queue_packet_for_send(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+				NetworkManager.network_flow_manager.queue_packet_for_send(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 	
 	NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
 	
