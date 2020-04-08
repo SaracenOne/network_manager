@@ -9,6 +9,7 @@ const network_constants_const = preload("network_constants.gd")
 
 const LOCALHOST_IP = "127.0.0.1"
 
+const ALL_PEERS : int = 0
 const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
 
@@ -36,11 +37,13 @@ const network_replication_manager_const = preload("network_replication_manager.g
 const network_state_manager_const = preload("network_state_manager.gd")
 const network_voice_manager_const = preload("network_voice_manager.gd")
 const network_entity_manager_const = preload("network_entity_manager.gd")
+const network_flow_manager_const = preload("network_flow_manager.gd")
 
 var network_replication_manager : Node = null
 var network_state_manager : Node = null
 var network_voice_manager : Node = null
 var network_entity_manager : Node = null
+var network_flow_manager : Node = null
 
 # Client
 var join_ip : String = LOCALHOST_IP
@@ -70,6 +73,7 @@ var peers : Array = []
 var valid_peers : Array = []
 var is_server_authoritative : bool = true
 var session_master : int = -1
+
 
 signal network_process(p_delta)
 signal network_flush()
@@ -212,7 +216,7 @@ func reset_session_data() -> void:
 	is_server_authoritative = true
 	session_master = -1
 	
-	received_packet_buffer_count = {}
+	network_flow_manager.reset()
 	
 	emit_signal("reset_timers")
 	
@@ -461,12 +465,6 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 	
 	received_packet_buffer_count[p_id] += 1
 
-func send_packet(p_buffer : PoolByteArray, p_id : int, p_transfer_mode : int) -> void:
-	get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
-	var send_bytes_result : int = get_tree().multiplayer.send_bytes(p_buffer, p_id)
-	
-	if send_bytes_result != OK:
-		ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 		
 func _process(p_delta : float) -> void:
 	if Engine.is_editor_hint() == false:
@@ -477,6 +475,8 @@ func _process(p_delta : float) -> void:
 		if has_active_peer():
 			if is_server() or client_state == validation_state_enum.VALIDATION_STATE_SYNCED:
 				emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
+				
+		network_flow_manager.process_network_packets(p_delta)
 	
 func get_valid_send_peers(p_id : int) -> Array:
 	var synced_peers : Array = []
@@ -501,35 +501,46 @@ func _ready() -> void:
 					
 		if ProjectSettings.has_setting("network/config/join_ip"):
 			join_ip = ProjectSettings.get_setting("network/config/join_ip")
+		else:
+			ProjectSettings.set_setting("network/config/join_ip", join_ip)
+			
 		if ProjectSettings.has_setting("network/config/join_port"):
 			join_port = ProjectSettings.get_setting("network/config/join_port")
+		else:
+			ProjectSettings.set_setting("network/config/join_port", join_port)
+			
 		if ProjectSettings.has_setting("network/config/host_port"):
 			host_port = ProjectSettings.get_setting("network/config/host_port")
+		else:
+			ProjectSettings.set_setting("network/config/host_port", host_port)
 			
 		network_entity_manager.cache_networked_scenes()
 		
 func _enter_tree() -> void:
-	if Engine.is_editor_hint() == false:
-		#Add sub managers to the tree
-		add_child(network_replication_manager)
-		add_child(network_state_manager)
-		add_child(network_voice_manager)
-		add_child(network_entity_manager)
+	#Add sub managers to the tree
+	add_child(network_replication_manager)
+	add_child(network_state_manager)
+	add_child(network_voice_manager)
+	add_child(network_entity_manager)
+	add_child(network_flow_manager)
 
 func _init() -> void:
-	if Engine.is_editor_hint() == false:
-		network_replication_manager = Node.new()
-		network_replication_manager.set_script(network_replication_manager_const)
-		network_replication_manager.set_name("NetworkReplicationManager")
-		
-		network_state_manager = Node.new()
-		network_state_manager.set_script(network_state_manager_const)
-		network_state_manager.set_name("NetworkStateManager")
-		
-		network_voice_manager = Node.new()
-		network_voice_manager.set_script(network_voice_manager_const)
-		network_voice_manager.set_name("NetworkVoiceManager")
-		
-		network_entity_manager = Node.new()
-		network_entity_manager.set_script(network_entity_manager_const)
-		network_entity_manager.set_name("NetworkEntityManager")
+	network_replication_manager = Node.new()
+	network_replication_manager.set_script(network_replication_manager_const)
+	network_replication_manager.set_name("NetworkReplicationManager")
+	
+	network_state_manager = Node.new()
+	network_state_manager.set_script(network_state_manager_const)
+	network_state_manager.set_name("NetworkStateManager")
+	
+	network_voice_manager = Node.new()
+	network_voice_manager.set_script(network_voice_manager_const)
+	network_voice_manager.set_name("NetworkVoiceManager")
+	
+	network_entity_manager = Node.new()
+	network_entity_manager.set_script(network_entity_manager_const)
+	network_entity_manager.set_name("NetworkEntityManager")
+	
+	network_flow_manager = Node.new()
+	network_flow_manager.set_script(network_flow_manager_const)
+	network_flow_manager.set_name("NetworkFlowManager")

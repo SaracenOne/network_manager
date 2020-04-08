@@ -1,6 +1,8 @@
 extends Node
 tool
 
+const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
+
 const entity_const = preload("res://addons/entity_manager/entity.gd")
 const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
@@ -248,7 +250,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 						reliable_network_writer.put_writer(entity_request_master_writer)
 						
 				if reliable_network_writer.get_size() > 0:
-					NetworkManager.send_packet(reliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(reliable_network_writer.get_raw_data()), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
 				
 			# Flush the pending spawn, parenting, and destruction queues
 			flush()

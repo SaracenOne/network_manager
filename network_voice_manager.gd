@@ -1,6 +1,8 @@
 extends Node
 tool
 
+const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
+
 const entity_const = preload("res://addons/entity_manager/entity.gd")
 const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
@@ -84,7 +86,7 @@ func decode_voice_command(
 				encoded_voice,
 				true)
 				
-				NetworkManager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+				NetworkManager.queue_packet_for_send(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 	
 	NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
 	
@@ -111,7 +113,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				NetworkManager.is_server_authoritative() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
 				
 				if unreliable_network_writer.get_size() > 0:
-					NetworkManager.send_packet(unreliable_network_writer.get_raw_data(), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(unreliable_network_writer.get_raw_data()), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 			GodotSpeech.input_audio_sent_id += 1
 
 func encode_voice_buffer(p_packet_sender_id : int,

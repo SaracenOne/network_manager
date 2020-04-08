@@ -1,6 +1,8 @@
 extends Node
 tool
 
+const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
+
 const entity_const = preload("res://addons/entity_manager/entity.gd")
 const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
@@ -90,7 +92,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
 				
 				if network_writer_state.get_position() > 0:
-					NetworkManager.send_packet(raw_data, synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
+					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 			if NetworkManager.is_server():
 				time_until_next_send = time_passed + SERVER_PACKET_SEND_RATE
 			else:
