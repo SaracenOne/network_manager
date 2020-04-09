@@ -77,7 +77,7 @@ var session_master : int = -1
 
 signal network_process(p_delta)
 signal network_flush()
-signal reset_timers()
+signal session_data_reset()
 signal game_hosted()
 
 signal peer_registered(p_id)
@@ -208,6 +208,8 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	return true
 	
 func reset_session_data() -> void:
+	print("Resetting session data")
+	
 	peer_server_data = {}
 	active_port = -1
 	client_state = validation_state_enum.VALIDATION_STATE_NONE
@@ -220,12 +222,13 @@ func reset_session_data() -> void:
 	
 	network_flow_manager.reset()
 	
-	emit_signal("reset_timers")
+	emit_signal("session_data_reset")
 	
 func force_close_connection() -> void:
 	if has_active_peer():
 		print("Closing connection...")
-		get_tree().multiplayer.set_network_peer(null)
+		if get_tree().multiplayer.has_network_peer():
+			get_tree().multiplayer.set_network_peer(null)
 		
 	emit_signal("network_flush")
 

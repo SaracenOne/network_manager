@@ -18,7 +18,7 @@ var state_writers = {}
 
 var signal_table : Array = [
 	{"singleton":"NetworkManager", "signal":"network_process", "method":"_network_manager_process"},
-	{"singleton":"NetworkManager", "signal":"reset_timers", "method":"_reset_internal_timer"},
+	{"singleton":"NetworkManager", "signal":"session_data_reset", "method":"_reset_internal_timer"},
 	{"singleton":"NetworkManager", "signal":"game_hosted", "method":"_game_hosted"},
 	{"singleton":"NetworkManager", "signal":"connection_succeeded", "method":"_connected_to_server"},
 	
