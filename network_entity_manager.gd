@@ -55,7 +55,7 @@ static func write_entity_scene_id(p_entity : entity_const, \
 	p_networked_scenes : Array, \
 	p_writer : network_writer_const) -> network_writer_const:
 	
-	var network_identity_node = p_entity.get_network_identity_node()
+	var network_identity_node = p_entity.network_identity_node
 	if p_networked_scenes.size() > 0xff:
 		p_writer.put_u16(network_identity_node.network_scene_id)
 	elif p_networked_scenes.size() > 0xffff:
@@ -98,7 +98,7 @@ static func read_entity_network_master(p_reader : network_reader_const) -> int:
 # Writes the instance id for p_entity to p_writer. Returns the p_writer
 static func write_entity_instance_id(p_entity : entity_const, \
 p_writer : network_writer_const) -> network_writer_const:
-	p_writer.put_u32(p_entity.get_network_identity_node().network_instance_id)
+	p_writer.put_u32(p_entity.network_identity_node.network_instance_id)
 		
 	return p_writer
 	

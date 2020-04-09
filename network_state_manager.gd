@@ -40,7 +40,7 @@ func create_entity_update_command(p_entity : entity_const) -> network_writer_con
 	var network_writer : network_writer_const = network_writer_const.new()
 
 	network_writer = NetworkManager.network_entity_manager.write_entity_instance_id(p_entity, network_writer)
-	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(null, false)
+	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(null, false)
 	var entity_state_size = entity_state.get_position()
 	if entity_state_size >= 0xffff:
 		ErrorManager.error("State data exceeds 16 bits!")

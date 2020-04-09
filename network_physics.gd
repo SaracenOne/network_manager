@@ -6,7 +6,7 @@ const network_entity_manager_const = preload("res://addons/network_manager/netwo
 signal mass_changed(p_mass)
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	var physics_node_root = entity_node.get_simulation_logic_node().physics_node_root
+	var physics_node_root = entity_node.simulation_logic_node.physics_node_root
 	
 	if p_initial_state:
 		p_writer.put_float(physics_node_root.mass)
@@ -24,7 +24,7 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
 	received_data = true
 	
-	var physics_node_root = entity_node.get_simulation_logic_node().physics_node_root
+	var physics_node_root = entity_node.simulation_logic_node.physics_node_root
 	
 	if p_initial_state:
 		physics_node_root.mass = p_reader.get_float()

@@ -211,6 +211,8 @@ func reset_session_data() -> void:
 	peer_server_data = {}
 	active_port = -1
 	client_state = validation_state_enum.VALIDATION_STATE_NONE
+	for peer_id in peers:
+		emit_signal("peer_unregistered", peer_id)
 	peers = []
 	valid_peers = []
 	is_server_authoritative = true

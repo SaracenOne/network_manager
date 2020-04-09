@@ -27,7 +27,7 @@ var network_entities_pending_request_transfer_master : Array = []
 
 func _entity_added(p_entity : entity_const) -> void:
 	if NetworkManager.is_server():
-		if p_entity.get_network_identity_node() != null:
+		if p_entity.network_identity_node != null:
 			if network_entities_pending_spawn.has(p_entity):
 				ErrorManager.error("Attempted to spawn two identical network entities")
 				
@@ -35,7 +35,7 @@ func _entity_added(p_entity : entity_const) -> void:
 		
 func _entity_removed(p_entity : entity_const) -> void:
 	if NetworkManager.is_server():
-		if p_entity.get_network_identity_node() != null:
+		if p_entity.network_identity_node != null:
 			if network_entities_pending_request_transfer_master.has(p_entity):
 				network_entities_pending_request_transfer_master.remove(network_entities_pending_request_transfer_master.find(p_entity))
 			
@@ -86,7 +86,7 @@ func create_entity_spawn_command(p_entity : entity_const) -> network_writer_cons
 	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
 	network_writer = network_entity_manager.write_entity_network_master(p_entity, network_writer)
 	
-	var entity_state : network_writer_const = p_entity.get_network_identity_node().get_state(null, true)
+	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(null, true)
 	network_writer.put_writer(entity_state, entity_state.get_position())
 
 	return network_writer

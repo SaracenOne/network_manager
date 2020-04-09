@@ -67,6 +67,7 @@ func ordered_inserted(p_packet : Reference, p_time_sorted_queue : Array, p_packe
 			if p_packet_time < p_time_sorted_queue[i].time:
 				p_time_sorted_queue.insert(i, p_packet)
 				packet_inserted = true
+				break
 				
 		# If the packet was not inserted, put it in the end of the queue
 		if packet_inserted == false:

@@ -30,7 +30,7 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	if p_initial_state:
 		pass
 		
-	var transform : Transform = entity_node.get_simulation_logic_node().get_transform()
+	var transform : Transform = entity_node.simulation_logic_node.get_transform()
 	write_transform(p_writer, transform)
 	
 	return p_writer

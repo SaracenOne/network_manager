@@ -35,11 +35,11 @@ func on_exit() -> void:
 		NetworkManager.network_entity_manager.unregister_network_instance_id(network_instance_id)
 	
 func get_state(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
-	p_writer = entity_node.get_network_logic_node().on_serialize(p_writer, p_initial_state)
+	p_writer = entity_node.network_logic_node.on_serialize(p_writer, p_initial_state)
 	return p_writer
 	
 func update_state(p_reader : network_reader_const, p_initial_state : bool) -> network_reader_const:
-	p_reader = entity_node.get_network_logic_node().on_deserialize(p_reader, p_initial_state)
+	p_reader = entity_node.network_logic_node.on_deserialize(p_reader, p_initial_state)
 	return p_reader
 	
 func get_network_root_node() -> Node:
