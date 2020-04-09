@@ -1,6 +1,8 @@
 extends Reference
 tool
 
+const runtime_entity_const = preload("res://addons/entity_manager/runtime_entity.gd")
+
 #
 enum {
 	ADD_ENTITY = 0,
@@ -13,6 +15,7 @@ func _add_entity_instance_unsafe(p_instance : Node, p_parent : Node = null) -> v
 	if p_parent:
 		print("Adding entity: " + p_instance.get_name())
 		p_parent.add_child(p_instance)
+		p_parent.set_script(runtime_entity_const)
 
 # Deletes an entity to the tree. Called exclusively in the main thread
 func _remove_entity_instance_unsafe(p_instance : Node) -> void:
