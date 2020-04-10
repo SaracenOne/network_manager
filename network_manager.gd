@@ -329,8 +329,8 @@ func get_connected_peers() -> PoolIntArray:
 	else:
 		return PoolIntArray()
 	
-func get_synced_peers() -> Array:
-	return valid_peers
+func copy_synced_peers() -> Array:
+	return valid_peers.duplicate()
 
 ##########################
 # Network state transfer #
@@ -487,15 +487,15 @@ func _process(p_delta : float) -> void:
 				
 		network_flow_manager.process_network_packets(p_delta)
 	
-func get_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> Array:
+func copy_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> Array:
 	var synced_peers : Array = []
 	if p_id == session_master or p_id == SERVER_MASTER_PEER_ID:
-		synced_peers = get_synced_peers()
+		synced_peers = copy_synced_peers()
 	else:
 		if is_server_authoritative:
 			synced_peers = [session_master]
 		else:
-			synced_peers = get_synced_peers()
+			synced_peers = copy_synced_peers()
 			
 	# For debugging purposes
 	if p_include_dummy_peers:

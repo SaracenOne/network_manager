@@ -84,7 +84,7 @@ func decode_voice_command(
 	
 	# If you're the server, forward the packet to all the other peers
 	if NetworkManager.is_server_authoritative() and NetworkManager.is_server():
-		var synced_peers : Array = NetworkManager.get_synced_peers()
+		var synced_peers : Array = NetworkManager.copy_synced_peers()
 		for synced_peer in synced_peers:
 			if synced_peer != sender_id:
 				var network_writer_state : network_writer_const = null
@@ -113,7 +113,7 @@ func decode_voice_command(
 		
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id, true)
+		var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, true)
 		
 		var voice_buffers : Array = GodotSpeech.copy_and_clear_buffers()
 		for voice_buffer in voice_buffers:

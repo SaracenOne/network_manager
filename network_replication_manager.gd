@@ -221,7 +221,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				print("]")
 			# Debugging end
 			
-			var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id, true)
+			var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, true)
 				
 			for synced_peer in synced_peers:
 				var network_writer_state : network_writer_const = null
