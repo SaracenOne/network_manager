@@ -52,7 +52,9 @@ func send_packet_queue(p_packet_queue : Array, p_transfer_mode : int):
 	if get_tree().multiplayer.get_network_peer():
 		get_tree().multiplayer.get_network_peer().set_transfer_mode(p_transfer_mode)
 		for packet in p_packet_queue:
-			if packet.id == 0 or NetworkManager.peers.has(packet.id):
+			if packet.id == NetworkManager.ALL_PEERS \
+			or packet.id == NetworkManager.SERVER_MASTER_PEER_ID \
+			or NetworkManager.peers.has(packet.id):
 				var send_bytes_result : int = get_tree().multiplayer.send_bytes(packet.ref_pool.pool_byte_array, packet.id)
 				if send_bytes_result != OK:
 					ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
