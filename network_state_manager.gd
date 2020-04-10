@@ -14,6 +14,7 @@ const MAXIMUM_STATE_PACKET_SIZE = 1024
 var time_passed = 0.0
 var time_until_next_send = 0.0
 
+var dummy_state_writer = network_writer_const.new(MAXIMUM_STATE_PACKET_SIZE) # For debugging purposes
 var state_writers = {}
 
 var signal_table : Array = [
@@ -36,63 +37,70 @@ var signal_table : Array = [
 Server
 """
 	
-func create_entity_update_command(p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
-
-	network_writer = NetworkManager.network_entity_manager.write_entity_instance_id(p_entity, network_writer)
+func write_entity_update_command(p_entity : entity_const, p_network_writer : network_writer_const) -> network_writer_const:
+	p_network_writer = NetworkManager.network_entity_manager.write_entity_instance_id(p_entity, p_network_writer)
 	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(null, false)
 	var entity_state_size = entity_state.get_position()
 	if entity_state_size >= 0xffff:
 		ErrorManager.error("State data exceeds 16 bits!")
-	else:
-		entity_state_size = 0
-	network_writer.put_u16(entity_state.get_position())
-	network_writer.put_writer(entity_state, entity_state.get_position())
+		
+	p_network_writer.put_u16(entity_state_size)
+	p_network_writer.put_writer(entity_state, entity_state_size)
 
-	return network_writer
+	return p_network_writer
 	
 func create_entity_command(p_command : int, p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
+	var network_writer : network_writer_const = NetworkManager.network_entity_command_writer_cache
+	network_writer.seek(0)
+	
 	match p_command:
 		network_constants_const.UPDATE_ENTITY_COMMAND:
 			network_writer.put_u8(network_constants_const.UPDATE_ENTITY_COMMAND)
-			network_writer.put_writer(create_entity_update_command(p_entity))
+			network_writer = write_entity_update_command(p_entity, network_writer)
 		_:
 			ErrorManager.error("Unknown entity message")
 
 	return network_writer
+	
+func scrape_and_send_state_data(p_id : int, p_synced_peer : int, p_entities : Array) -> void:
+	var network_writer_state : network_writer_const = null
+	
+	if p_synced_peer != -1:
+		network_writer_state = state_writers[p_synced_peer]
+	else:
+		network_writer_state = dummy_state_writer
+	
+	network_writer_state.seek(0)
+	
+	# Update commands
+	for entity in p_entities:
+		if entity.is_inside_tree():
+			var entity_master : int = entity.get_network_master()
+			if p_synced_peer != entity_master:
+				var is_valid_entity : bool = false
+				if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
+					is_valid_entity = true
+				else:
+					if (entity_master == p_id):
+						is_valid_entity = true
+					
+				if is_valid_entity:
+					var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity)
+					network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
+			
+	if network_writer_state.get_position() > 0:
+		var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
+		NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), p_synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
 		
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		time_passed += p_delta
 		if time_passed > time_until_next_send:
-			var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
+			var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id, true)
+			var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
 				
 			for synced_peer in synced_peers:
-				var network_writer_state : network_writer_const = state_writers[synced_peer]
-				network_writer_state.seek(0)
-				
-				# Update commands
-				var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
-				var entity_update_writers : Array = []
-				for entity in entities:
-					if entity.is_inside_tree():
-						var entity_master : int = entity.get_network_master()
-						if synced_peer != entity_master:
-							if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
-								entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
-							else:
-								if (entity_master == p_id):
-									entity_update_writers.append(create_entity_command(network_constants_const.UPDATE_ENTITY_COMMAND, entity))
-								
-				# Put the update commands into the unreliable channel
-				for entity_update_writer in entity_update_writers:
-					network_writer_state.put_writer(entity_update_writer)
-						
-				var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
-				
-				if network_writer_state.get_position() > 0:
-					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED)
+				scrape_and_send_state_data(p_id, synced_peer, entities)
 			if NetworkManager.is_server():
 				time_until_next_send = time_passed + SERVER_PACKET_SEND_RATE
 			else:

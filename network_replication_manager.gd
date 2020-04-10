@@ -8,12 +8,23 @@ const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 
+const MAXIMUM_REPLICATION_PACKET_SIZE = 1024
+
+var dummy_replication_writer = network_writer_const.new(MAXIMUM_REPLICATION_PACKET_SIZE) # For debugging purposes
+var replication_writers = {}
+
 var signal_table : Array = [
 	{"singleton":"NetworkManager", "signal":"peer_unregistered", "method":"_reclaim_peers_entities"},
 	{"singleton":"EntityManager", "signal":"entity_added", "method":"_entity_added"},
 	{"singleton":"EntityManager", "signal":"entity_removed", "method":"_entity_removed"},
 	{"singleton":"NetworkManager", "signal":"network_process", "method":"_network_manager_process"},
 	{"singleton":"NetworkManager", "signal":"network_flush", "method":"_network_manager_flush"},
+	
+	{"singleton":"NetworkManager", "signal":"game_hosted", "method":"_game_hosted"},
+	{"singleton":"NetworkManager", "signal":"connection_succeeded", "method":"_connected_to_server"},
+	
+	{"singleton":"NetworkManager", "signal":"server_peer_connected", "method":"_server_peer_connected"},
+	{"singleton":"NetworkManager", "signal":"server_peer_disconnected", "method":"_server_peer_disconnected"},
 ]
 
 signal spawn_state_for_new_client_ready(p_network_id, p_network_writer)
@@ -78,59 +89,57 @@ func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "NetEnti
 Server
 """
 
-func create_entity_spawn_command(p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
+func write_entity_spawn_command(p_entity : entity_const, p_network_writer : network_writer_const) -> network_writer_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 
-	network_writer = network_entity_manager.write_entity_scene_id(p_entity, network_entity_manager.networked_scenes, network_writer)
-	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
-	network_writer = network_entity_manager.write_entity_network_master(p_entity, network_writer)
+	p_network_writer = network_entity_manager.write_entity_scene_id(p_entity, network_entity_manager.networked_scenes, p_network_writer)
+	p_network_writer = network_entity_manager.write_entity_instance_id(p_entity, p_network_writer)
+	p_network_writer = network_entity_manager.write_entity_network_master(p_entity, p_network_writer)
 	
 	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(null, true)
-	network_writer.put_writer(entity_state, entity_state.get_position())
+	p_network_writer.put_writer(entity_state, entity_state.get_position())
 
-	return network_writer
+	return p_network_writer
 
-func create_entity_destroy_command(p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
+func write_entity_destroy_command(p_entity : entity_const, p_network_writer : network_writer_const) -> network_writer_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 
-	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
+	p_network_writer = network_entity_manager.write_entity_instance_id(p_entity, p_network_writer)
 
-	return network_writer
+	return p_network_writer
 
-func create_entity_request_master_command(p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
+func write_entity_request_master_command(p_entity : entity_const, p_network_writer : network_writer_const) -> network_writer_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 
-	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
+	p_network_writer = network_entity_manager.write_entity_instance_id(p_entity, p_network_writer)
 
-	return network_writer
+	return p_network_writer
 	
-func create_entity_transfer_master_command(p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
+func write_entity_transfer_master_command(p_entity : entity_const, p_network_writer : network_writer_const) -> network_writer_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 
-	network_writer = network_entity_manager.write_entity_instance_id(p_entity, network_writer)
-	network_writer = network_entity_manager.write_entity_network_master(p_entity, network_writer)
+	p_network_writer = network_entity_manager.write_entity_instance_id(p_entity, p_network_writer)
+	p_network_writer = network_entity_manager.write_entity_network_master(p_entity, p_network_writer)
 
-	return network_writer
+	return p_network_writer
 	
 func create_entity_command(p_command : int, p_entity : entity_const) -> network_writer_const:
-	var network_writer : network_writer_const = network_writer_const.new()
+	var network_writer : network_writer_const = NetworkManager.network_entity_command_writer_cache
+	network_writer.seek(0)
+	
 	match p_command:
 		network_constants_const.SPAWN_ENTITY_COMMAND:
 			network_writer.put_u8(network_constants_const.SPAWN_ENTITY_COMMAND)
-			network_writer.put_writer(create_entity_spawn_command(p_entity))
+			network_writer = write_entity_spawn_command(p_entity, network_writer)
 		network_constants_const.DESTROY_ENTITY_COMMAND:
 			network_writer.put_u8(network_constants_const.DESTROY_ENTITY_COMMAND)
-			network_writer.put_writer(create_entity_destroy_command(p_entity))
+			network_writer = write_entity_destroy_command(p_entity, network_writer)
 		network_constants_const.REQUEST_ENTITY_MASTER_COMMAND:
 			network_writer.put_u8(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND)
-			network_writer.put_writer(create_entity_request_master_command(p_entity))
+			network_writer = write_entity_request_master_command(p_entity, network_writer)
 		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			network_writer.put_u8(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND)
-			network_writer.put_writer(create_entity_transfer_master_command(p_entity))
+			network_writer = write_entity_transfer_master_command(p_entity, network_writer)
 		_:
 			ErrorManager.error("Unknown entity message")
 
@@ -212,45 +221,38 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				print("]")
 			# Debugging end
 			
-			var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
+			var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id, true)
 				
 			for synced_peer in synced_peers:
-				var reliable_network_writer : network_writer_const = network_writer_const.new()
+				var network_writer_state : network_writer_const = null
+				
+				if synced_peer != -1:
+					network_writer_state = replication_writers[synced_peer]
+				else:
+					network_writer_state = dummy_replication_writer
+				
+				network_writer_state.seek(0)
 				
 				if p_id == NetworkManager.session_master:
 					# Spawn commands
-					var entity_spawn_writers : Array = []
 					for entity in network_entities_pending_spawn:
-						entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
+						network_writer_state.put_writer(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
 						
 					# Destroy commands
-					var entity_destroy_writers : Array = []
 					for entity in network_entities_pending_destruction:
-						entity_destroy_writers.append(create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity))
+						network_writer_state.put_writer(create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity))
 						
 					# Transfer master commands
-					var entity_transfer_master_writers : Array = []
 					for entity in network_entities_pending_request_transfer_master:
-						entity_transfer_master_writers.append(create_entity_command(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND, entity))
-						
-					# Put spawn, destroy and transfer, commands into the reliable channel
-					for entity_spawn_writer in entity_spawn_writers:
-						reliable_network_writer.put_writer(entity_spawn_writer)
-					for entity_destroy_writer in entity_destroy_writers:
-						reliable_network_writer.put_writer(entity_destroy_writer)
-					for entity_transfer_master_writer in entity_transfer_master_writers:
-						reliable_network_writer.put_writer(entity_transfer_master_writer)
+						network_writer_state.put_writer(create_entity_command(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND, entity))
 				else:
 					# Request master commands
-					var entity_request_master_writers : Array = []
 					for entity in network_entities_pending_request_transfer_master:
-						entity_request_master_writers.append(create_entity_command(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND, entity))
+						network_writer_state.put_writer(create_entity_command(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND, entity))
 						
-					for entity_request_master_writer in entity_request_master_writers:
-						reliable_network_writer.put_writer(entity_request_master_writer)
-						
-				if reliable_network_writer.get_size() > 0:
-					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(reliable_network_writer.get_raw_data()), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
+				if network_writer_state.get_position() > 0:
+					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
+					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE)
 				
 			# Flush the pending spawn, parenting, and destruction queues
 			flush()
@@ -477,6 +479,22 @@ func _reclaim_peers_entities(p_id : int) -> void:
 			if entity_instance.get_network_master() == p_id:
 				if entity_instance.can_request_master_from_peer(NetworkManager.get_current_peer_id()):
 					entity_instance.request_to_become_master()
+	
+func _game_hosted() -> void:
+	replication_writers = {}
+	
+func _connected_to_server() -> void:
+	replication_writers = {}
+	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_REPLICATION_PACKET_SIZE)
+	replication_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_writer
+	
+func _server_peer_connected(p_id : int) -> void:
+	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_REPLICATION_PACKET_SIZE)
+	replication_writers[p_id] = network_writer
+
+func _server_peer_disconnected(p_id : int) -> void:
+	if replication_writers.erase(p_id) == false:
+		printerr("network_state_manager: attempted disconnect invalid peer!")
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:

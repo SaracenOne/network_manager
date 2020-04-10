@@ -8,9 +8,19 @@ const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 
+const MAXIMUM_VOICE_PACKET_SIZE = 1024
+
+var dummy_voice_writer = network_writer_const.new(MAXIMUM_VOICE_PACKET_SIZE) # For debugging purposes
+var voice_writers = {}
 
 var signal_table : Array = [
 	{"singleton":"NetworkManager", "signal":"network_process", "method":"_network_manager_process"},
+	
+	{"singleton":"NetworkManager", "signal":"game_hosted", "method":"_game_hosted"},
+	{"singleton":"NetworkManager", "signal":"connection_succeeded", "method":"_connected_to_server"},
+	
+	{"singleton":"NetworkManager", "signal":"server_peer_connected", "method":"_server_peer_connected"},
+	{"singleton":"NetworkManager", "signal":"server_peer_disconnected", "method":"_server_peer_disconnected"},
 ]
 
 
@@ -77,16 +87,25 @@ func decode_voice_command(
 		var synced_peers : Array = NetworkManager.get_synced_peers()
 		for synced_peer in synced_peers:
 			if synced_peer != sender_id:
-				var unreliable_network_writer : network_writer_const = network_writer_const.new()
+				var network_writer_state : network_writer_const = null
+				
+				if synced_peer != -1:
+					network_writer_state = voice_writers[synced_peer]
+				else:
+					network_writer_state = dummy_voice_writer
+				
+				network_writer_state.seek(0)
 				
 				# Voice commands
-				unreliable_network_writer = encode_voice_buffer(sender_id,
-				unreliable_network_writer,
+				network_writer_state = encode_voice_buffer(sender_id,
+				network_writer_state,
 				encoded_index,
 				encoded_voice,
 				true)
 				
-				NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(unreliable_network_writer.get_raw_data()), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+				if network_writer_state.get_position() > 0:
+					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
+					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 	
 	NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
 	
@@ -94,7 +113,7 @@ func decode_voice_command(
 		
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id)
+		var synced_peers : Array = NetworkManager.get_valid_send_peers(p_id, true)
 		
 		var voice_buffers : Array = GodotSpeech.copy_and_clear_buffers()
 		for voice_buffer in voice_buffers:
@@ -103,17 +122,25 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				voice_buffer = PoolByteArray()
 			
 			for synced_peer in synced_peers:
-				var unreliable_network_writer : network_writer_const = network_writer_const.new()
+				var network_writer_state : network_writer_const = null
+				
+				if synced_peer != -1:
+					network_writer_state = voice_writers[synced_peer]
+				else:
+					network_writer_state = dummy_voice_writer
+				
+				network_writer_state.seek(0)
 				
 				# Voice commands
-				unreliable_network_writer = encode_voice_buffer(p_id,
-				unreliable_network_writer,
+				network_writer_state = encode_voice_buffer(p_id,
+				network_writer_state,
 				GodotSpeech.input_audio_sent_id,
 				voice_buffer,
 				NetworkManager.is_server_authoritative() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
 				
-				if unreliable_network_writer.get_size() > 0:
-					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(unreliable_network_writer.get_raw_data()), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+				if network_writer_state.get_position() > 0:
+					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
+					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 			GodotSpeech.input_audio_sent_id += 1
 
 func encode_voice_buffer(p_packet_sender_id : int,
@@ -137,6 +164,22 @@ func decode_voice_buffer(p_packet_sender_id : int, p_network_reader : network_re
 			p_network_reader = decode_voice_command(p_packet_sender_id, p_network_reader)
 	
 	return p_network_reader
+	
+func _game_hosted() -> void:
+	voice_writers = {}
+	
+func _connected_to_server() -> void:
+	voice_writers = {}
+	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_VOICE_PACKET_SIZE)
+	voice_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_writer
+	
+func _server_peer_connected(p_id : int) -> void:
+	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_VOICE_PACKET_SIZE)
+	voice_writers[p_id] = network_writer
+
+func _server_peer_disconnected(p_id : int) -> void:
+	if voice_writers.erase(p_id) == false:
+		printerr("network_state_manager: attempted disconnect invalid peer!")
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:

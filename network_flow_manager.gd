@@ -59,9 +59,6 @@ func send_packet_queue(p_packet_queue : Array, p_transfer_mode : int):
 				if send_bytes_result != OK:
 					ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 
-func sort_packet_queue_by_time(a, b):
-	return a.time <= b.time
-
 func ordered_inserted(p_packet : Reference, p_time_sorted_queue : Array, p_packet_time : float):
 	if p_time_sorted_queue.size():
 		var packet_inserted : bool = false

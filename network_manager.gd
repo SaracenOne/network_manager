@@ -71,9 +71,13 @@ var active_ip : String = ""
 var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
 var peers : Array = []
 var valid_peers : Array = []
+
+const DUMMY_PEER_COUNT : int = 0
+
 var is_server_authoritative : bool = true
 var session_master : int = -1
 
+var network_entity_command_writer_cache : network_writer_const = network_writer_const.new(1024)
 
 signal network_process(p_delta)
 signal network_flush()
@@ -483,7 +487,7 @@ func _process(p_delta : float) -> void:
 				
 		network_flow_manager.process_network_packets(p_delta)
 	
-func get_valid_send_peers(p_id : int) -> Array:
+func get_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> Array:
 	var synced_peers : Array = []
 	if p_id == session_master or p_id == SERVER_MASTER_PEER_ID:
 		synced_peers = get_synced_peers()
@@ -492,6 +496,11 @@ func get_valid_send_peers(p_id : int) -> Array:
 			synced_peers = [session_master]
 		else:
 			synced_peers = get_synced_peers()
+			
+	# For debugging purposes
+	if p_include_dummy_peers:
+		for i in range(0, DUMMY_PEER_COUNT):
+			synced_peers.push_back(-1)
 			
 	return synced_peers
 	
