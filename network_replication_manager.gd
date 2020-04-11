@@ -178,6 +178,15 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
 	var entity_spawn_writers : Array = []
 	
+	var network_writer_state : network_writer_const = null
+	
+	if p_network_id != -1:
+		network_writer_state = replication_writers[p_network_id]
+	else:
+		network_writer_state = dummy_replication_writer
+	
+	network_writer_state.seek(0)
+	
 	print("Spawn state = [")
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
@@ -186,15 +195,12 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
-			entity_spawn_writers.append(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
+			var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity)
+			network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
+			
+	print("Spawn state size : " + str(network_writer_state.get_position()))
 		
-	var network_writer : network_writer_const = network_writer_const.new()
-	for entity_spawn_writer in entity_spawn_writers:
-		network_writer.put_writer(entity_spawn_writer)
-		
-	print("Spawn state size : " + str(network_writer.get_size()))
-		
-	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer)
+	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer_state)
 	
 func flush() -> void:
 	network_entities_pending_spawn = []
@@ -237,19 +243,23 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				if p_id == NetworkManager.session_master:
 					# Spawn commands
 					for entity in network_entities_pending_spawn:
-						network_writer_state.put_writer(create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity))
+						var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity)
+						network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
 						
 					# Destroy commands
 					for entity in network_entities_pending_destruction:
-						network_writer_state.put_writer(create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity))
+						var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.DESTROY_ENTITY_COMMAND, entity)
+						network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
 						
 					# Transfer master commands
 					for entity in network_entities_pending_request_transfer_master:
-						network_writer_state.put_writer(create_entity_command(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND, entity))
+						var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND, entity)
+						network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
 				else:
 					# Request master commands
 					for entity in network_entities_pending_request_transfer_master:
-						network_writer_state.put_writer(create_entity_command(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND, entity))
+						var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND, entity)
+						network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
 						
 				if network_writer_state.get_position() > 0:
 					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
