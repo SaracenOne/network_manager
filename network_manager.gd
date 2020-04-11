@@ -504,6 +504,9 @@ func copy_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> 
 			
 	return synced_peers
 	
+func get_network_scene_paths() -> Array:
+	return network_entity_manager.get_network_scene_paths()
+	
 func _ready() -> void:
 	if ProjectSettings.has_setting("network/config/entity_root_node"):
 		entity_root_node_path = NodePath(ProjectSettings.get_setting("network/config/entity_root_node"))
@@ -530,8 +533,7 @@ func _ready() -> void:
 			if get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method) != OK:
 				printerr("NetworkManager: {signal} could not be connected!".format(
 					{"signal":str(current_signal.signal)}))
-			
-		network_entity_manager.cache_networked_scenes()
+
 		
 func _enter_tree() -> void:
 	#Add sub managers to the tree

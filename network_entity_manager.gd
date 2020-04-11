@@ -155,14 +155,8 @@ func get_network_instance_identity(p_network_instance_id : int) -> Node:
 	
 	return null
 	
-# Caches all of the base scene types for entities
-# TODO: this should be background threaded
-func cache_networked_scenes() -> void:
-	for i in range(0, networked_scenes.size()):
-		var packed_scene : PackedScene = null
-		
-		if ResourceLoader.exists(networked_scenes[i]):
-			packed_scene = ResourceLoader.load(networked_scenes[i])
+func get_network_scene_paths() -> Array:
+	return networked_scenes
 	
 func _ready() -> void:
 	if(!ProjectSettings.has_setting("network/config/networked_scenes")):
