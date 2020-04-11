@@ -505,28 +505,31 @@ func copy_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> 
 	return synced_peers
 	
 func _ready() -> void:
-	if Engine.is_editor_hint() == false:
+	if ProjectSettings.has_setting("network/config/entity_root_node"):
 		entity_root_node_path = NodePath(ProjectSettings.get_setting("network/config/entity_root_node"))
+	else:
+		ProjectSettings.set_setting("network/config/entity_root_node", entity_root_node_path)
+	
+	if ProjectSettings.has_setting("network/config/join_ip"):
+		join_ip = ProjectSettings.get_setting("network/config/join_ip")
+	else:
+		ProjectSettings.set_setting("network/config/join_ip", join_ip)
 		
+	if ProjectSettings.has_setting("network/config/join_port"):
+		join_port = ProjectSettings.get_setting("network/config/join_port")
+	else:
+		ProjectSettings.set_setting("network/config/join_port", join_port)
+		
+	if ProjectSettings.has_setting("network/config/host_port"):
+		host_port = ProjectSettings.get_setting("network/config/host_port")
+	else:
+		ProjectSettings.set_setting("network/config/host_port", host_port)
+	
+	if Engine.is_editor_hint() == false:
 		for current_signal in multiplayer_signal_table:
 			if get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method) != OK:
 				printerr("NetworkManager: {signal} could not be connected!".format(
 					{"signal":str(current_signal.signal)}))
-					
-		if ProjectSettings.has_setting("network/config/join_ip"):
-			join_ip = ProjectSettings.get_setting("network/config/join_ip")
-		else:
-			ProjectSettings.set_setting("network/config/join_ip", join_ip)
-			
-		if ProjectSettings.has_setting("network/config/join_port"):
-			join_port = ProjectSettings.get_setting("network/config/join_port")
-		else:
-			ProjectSettings.set_setting("network/config/join_port", join_port)
-			
-		if ProjectSettings.has_setting("network/config/host_port"):
-			host_port = ProjectSettings.get_setting("network/config/host_port")
-		else:
-			ProjectSettings.set_setting("network/config/host_port", host_port)
 			
 		network_entity_manager.cache_networked_scenes()
 		
