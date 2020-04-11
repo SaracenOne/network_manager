@@ -22,6 +22,7 @@ var multiplayer_signal_table : Array = [
 	{"signal":"network_peer_packet", "method":"_network_peer_packet"},
 ]
 
+var kill_flag : bool = false
 onready var gameroot = get_tree().get_root()
 
 enum validation_state_enum {
@@ -97,6 +98,8 @@ signal connection_succeeded()
 signal server_disconnected()
 signal network_peer_packet()
 
+signal connection_killed()
+
 signal voice_packet_compressed(p_id, p_index, p_buffer)
 	
 #Server
@@ -142,6 +145,10 @@ func is_session_master() -> bool:
 		return is_server()
 	else:
 		return session_master == get_current_peer_id()
+	
+func request_network_kill() -> void:
+	kill_flag = true
+	force_close_connection()
 	
 func is_server_authoritative() -> bool:
 	return is_server_authoritative
@@ -235,8 +242,8 @@ func force_close_connection() -> void:
 			get_tree().multiplayer.set_network_peer(null)
 		
 	emit_signal("network_flush")
-
 	reset_session_data()
+	emit_signal("connection_killed")
 
 func get_current_peer_id() -> int:
 	if has_active_peer():
@@ -450,6 +457,7 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 			network_reader = network_voice_manager.decode_voice_buffer(p_id, network_reader, command)
 		else:
 			ErrorManager.error("Invalid command: {command}".format({"command":str(command)}))
+		
 		
 		if OS.is_stdout_verbose():
 			if network_reader:
