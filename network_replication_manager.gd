@@ -70,6 +70,7 @@ func get_entity_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 	
 func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
+	print_debug("Creating entity instance " + p_name + " of type " + p_packed_scene.resource_path)
 	var instance : Node = p_packed_scene.instance()
 	instance.set_name(p_name)
 	instance.set_network_master(p_master_id)
