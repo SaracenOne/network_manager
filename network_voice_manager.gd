@@ -60,7 +60,7 @@ func decode_voice_command(
 	if p_network_reader.is_eof():
 		return null
 		
-	if NetworkManager.is_server_authoritative() and p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+	if !NetworkManager.is_relay() and p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
 		sender_id = p_network_reader.get_u32()
 		if p_network_reader.is_eof():
 			return null
@@ -83,8 +83,8 @@ func decode_voice_command(
 		printerr("pool size mismatch!")
 	
 	# If you're the server, forward the packet to all the other peers
-	if NetworkManager.is_server_authoritative() and NetworkManager.is_server():
-		var synced_peers : Array = NetworkManager.copy_synced_peers()
+	if !NetworkManager.is_relay() and NetworkManager.is_server():
+		var synced_peers : Array = NetworkManager.copy_active_peers()
 		for synced_peer in synced_peers:
 			if synced_peer != sender_id:
 				var network_writer_state : network_writer_const = null
@@ -113,7 +113,7 @@ func decode_voice_command(
 		
 func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
-		var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, true)
+		var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
 		
 		var voice_buffers : Array = GodotSpeech.copy_and_clear_buffers()
 		for voice_buffer in voice_buffers:
@@ -136,7 +136,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				network_writer_state,
 				GodotSpeech.input_audio_sent_id,
 				voice_buffer,
-				NetworkManager.is_server_authoritative() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
+				!NetworkManager.is_relay() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
 				
 				if network_writer_state.get_position() > 0:
 					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
@@ -180,6 +180,12 @@ func _server_peer_connected(p_id : int) -> void:
 func _server_peer_disconnected(p_id : int) -> void:
 	if voice_writers.erase(p_id) == false:
 		printerr("network_state_manager: attempted disconnect invalid peer!")
+	
+func is_command_valid(p_command : int) -> bool:
+	if p_command == network_constants_const.VOICE_COMMAND:
+		return true
+	else:
+		return false
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:

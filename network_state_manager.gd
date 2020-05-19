@@ -96,7 +96,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		time_passed += p_delta
 		if time_passed > time_until_next_send:
-			var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, true)
+			var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
 			var entities : Array = get_tree().get_nodes_in_group("NetworkedEntities")
 				
 			for synced_peer in synced_peers:
@@ -125,7 +125,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 		var network_identity_instance : Node = network_entity_manager.network_instance_ids[instance_id]
 		var network_instance_master : int = network_identity_instance.get_network_master()
 		var invalid_sender_id = false
-		if NetworkManager.is_server_authoritative():
+		if !NetworkManager.is_relay():
 			# Only the server will accept state updates for entities directly and other clients will accept them from the host
 			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or (p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID and network_instance_master != NetworkManager.get_current_peer_id()):
 				network_identity_instance.update_state(p_network_reader, false)
@@ -171,6 +171,12 @@ func _server_peer_disconnected(p_id : int) -> void:
 func _reset_internal_timer() -> void:
 	time_passed = 0.0
 	time_until_next_send = 0.0
+	
+func is_command_valid(p_command : int) -> bool:
+	if p_command == network_constants_const.UPDATE_ENTITY_COMMAND:
+		return true
+	else:
+		return false
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:

@@ -228,7 +228,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 				print("]")
 			# Debugging end
 			
-			var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, true)
+			var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
 				
 			for synced_peer in synced_peers:
 				var network_writer_state : network_writer_const = null
@@ -506,6 +506,15 @@ func _server_peer_connected(p_id : int) -> void:
 func _server_peer_disconnected(p_id : int) -> void:
 	if replication_writers.erase(p_id) == false:
 		printerr("network_state_manager: attempted disconnect invalid peer!")
+	
+func is_command_valid(p_command : int) -> bool:
+	if p_command == network_constants_const.SPAWN_ENTITY_COMMAND or \
+		p_command == network_constants_const.DESTROY_ENTITY_COMMAND or \
+		p_command == network_constants_const.REQUEST_ENTITY_MASTER_COMMAND or \
+		p_command == network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
+		return true
+	else:
+		return false
 	
 func _ready() -> void:
 	if Engine.is_editor_hint() == false:

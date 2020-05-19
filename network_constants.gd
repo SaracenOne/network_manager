@@ -7,7 +7,12 @@ enum {
 	DESTROY_ENTITY_COMMAND,
 	REQUEST_ENTITY_MASTER_COMMAND,
 	TRANSFER_ENTITY_MASTER_COMMAND,
-	VOICE_COMMAND
+	VOICE_COMMAND,
+	INFO_REQUEST_COMMAND,
+	STATE_REQUEST_COMMAND,
+	READY_COMMAND,
+	MAP_CHANGING_COMMAND,
+	SESSION_MASTER_COMMAND
 }
 
 # Returns a string name for a corresponding network command
@@ -18,7 +23,12 @@ static func get_string_for_command(p_id : int) -> String:
 		DESTROY_ENTITY_COMMAND:"DestroyEntityCommand",
 		REQUEST_ENTITY_MASTER_COMMAND:"RequestEntityMasterCommand",
 		TRANSFER_ENTITY_MASTER_COMMAND:"TransferEntityMasterCommand",
-		VOICE_COMMAND:"VoiceCommand"
+		VOICE_COMMAND:"VoiceCommand",
+		INFO_REQUEST_COMMAND:"InfoRequestCommand",
+		STATE_REQUEST_COMMAND:"StateRequestCommand",
+		READY_COMMAND:"ReadyCommand",
+		MAP_CHANGING_COMMAND:"MapChangingCommand",
+		SESSION_MASTER_COMMAND:"SessionMasterCommand"
 	}
 	
 	if command_string_table.has(p_id):
