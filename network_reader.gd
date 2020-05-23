@@ -151,6 +151,9 @@ func get_basis() -> Basis:
 func get_transform() -> Transform:
 	return Transform(get_basis(), get_vector3())
 	
+func get_var():
+	return stream_peer_buffer.get_var(false)
+	
 func get_entity_id() -> int:
 	return get_u32()
 	

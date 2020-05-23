@@ -122,6 +122,9 @@ func put_basis(p_basis : Basis) -> void:
 func put_transform(p_transform : Transform) -> void:
 	put_basis(p_transform.basis)
 	put_vector3(p_transform.origin)
+	
+func put_var(p_var) -> void:
+	stream_peer_buffer.put_var(p_var, false)
 
 func _init(p_size : int = 0) -> void:
 	if p_size > 0:

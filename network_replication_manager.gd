@@ -505,7 +505,7 @@ func _server_peer_connected(p_id : int) -> void:
 
 func _server_peer_disconnected(p_id : int) -> void:
 	if replication_writers.erase(p_id) == false:
-		printerr("network_state_manager: attempted disconnect invalid peer!")
+		printerr("network_replication_manager: attempted disconnect invalid peer!")
 	
 func is_command_valid(p_command : int) -> bool:
 	if p_command == network_constants_const.SPAWN_ENTITY_COMMAND or \

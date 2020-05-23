@@ -1,6 +1,8 @@
 extends NetworkLogic
 class_name NetworkTransform
 
+const math_funcs_const = preload("res://addons/math_util/math_funcs.gd")
+
 var target_origin : Vector3 = Vector3()
 var target_rotation : Quat = Quat()
 
