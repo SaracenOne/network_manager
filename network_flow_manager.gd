@@ -1,8 +1,8 @@
 extends Node
 tool
 
-const DEBUG_SENT_DATA = true
-var send_data_file = File.new()
+const LOG_SENT_DATA = false
+var sent_data_file = File.new()
 
 const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
 
@@ -41,7 +41,7 @@ var reliable_packet_queue_time_sorted : Array = []
 var packet_peer_target : Dictionary = {}
 
 static func save_packet_data(p_file : File, p_sender_peer_id : int, p_target_peer_id : int, p_transfer_mode : int, p_packet : PoolByteArray) -> void:
-	if DEBUG_SENT_DATA:
+	if LOG_SENT_DATA:
 		var transfer_mode_string : String = "?"
 		match p_transfer_mode:
 			NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE:
@@ -76,8 +76,8 @@ func send_packet_queue(p_packet_queue : Array, p_transfer_mode : int):
 				if send_bytes_result != OK:
 					ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 				else:
-					if DEBUG_SENT_DATA:
-						save_packet_data(send_data_file, NetworkManager.get_current_peer_id(), packet.id, p_transfer_mode, packet.ref_pool.pool_byte_array)
+					if LOG_SENT_DATA:
+						save_packet_data(sent_data_file, NetworkManager.get_current_peer_id(), packet.id, p_transfer_mode, packet.ref_pool.pool_byte_array)
 
 func ordered_inserted(p_packet : Reference, p_time_sorted_queue : Array, p_packet_time : float):
 	if p_time_sorted_queue.size():
@@ -142,8 +142,8 @@ func setup_and_send_ordered_queue(p_time : float, p_queue : Array, p_time_sorted
 				if send_bytes_result != OK:
 					ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 				else:
-					if DEBUG_SENT_DATA:
-						save_packet_data(send_data_file, NetworkManager.get_current_peer_id(), packet.id, p_transfer_mode, packet.ref_pool.pool_byte_array)
+					if LOG_SENT_DATA:
+						save_packet_data(sent_data_file, NetworkManager.get_current_peer_id(), packet.id, p_transfer_mode, packet.ref_pool.pool_byte_array)
 						
 			p_time_sorted_queue.remove(index)
 			
@@ -181,11 +181,11 @@ func reset():
 	clear_time_sorted_packet_queues()
 
 func _ready() -> void:
-	if DEBUG_SENT_DATA:
-		send_data_file = File.new()
+	if LOG_SENT_DATA:
+		sent_data_file = File.new()
 		var datetime : Dictionary = OS.get_datetime(true)
 		
-		send_data_file.open("user://send_data_file_" + str(datetime.year) + "_" \
+		sent_data_file.open("user://sent_data_file_" + str(datetime.year) + "_" \
 		+ str(datetime.month) + "_" \
 		+ str(datetime.day) + "_" \
 		+ str(datetime.hour) + "_" \
