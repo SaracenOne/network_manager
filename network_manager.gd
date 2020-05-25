@@ -48,6 +48,8 @@ var network_entity_manager : Node = null
 var network_flow_manager : Node = null
 var network_handshake_manager : Node = null
 
+var compression_mode : int = NetworkedMultiplayerENet.COMPRESS_NONE
+
 # Client
 var join_ip : String = LOCALHOST_IP
 var join_port : int = 7777
@@ -198,6 +200,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : 
 	active_ip = LOCALHOST_IP
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
+	net.compression_mode = compression_mode
 	
 	set_relay(p_relay)
 	
@@ -229,6 +232,7 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	reset_session_data()
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
+	net.compression_mode = compression_mode
 	
 	if p_ip.is_valid_ip_address() == false:
 		print("Invalid ip address!")
@@ -502,6 +506,20 @@ func _ready() -> void:
 		host_port = ProjectSettings.get_setting("network/config/host_port")
 	else:
 		ProjectSettings.set_setting("network/config/host_port", host_port)
+	
+	if(!ProjectSettings.has_setting("network/config/compression_mode")):
+		ProjectSettings.set_setting("network/config/compression_mode", compression_mode)
+	else:
+		compression_mode = ProjectSettings.get_setting("network/config/compression_mode")
+		
+	var compression_mode_property_info : Dictionary = {
+		"name": "network/config/compression_mode",
+		"type": TYPE_INT,
+		"hint": PROPERTY_HINT_ENUM,
+		"hint_string": "None,Range Coder,FastLZ,zlib,Zstandard"
+	}
+	
+	ProjectSettings.add_property_info(compression_mode_property_info)
 	
 	if Engine.is_editor_hint() == false:
 		for current_signal in multiplayer_signal_table:
