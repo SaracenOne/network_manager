@@ -118,7 +118,8 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 		var voice_buffers : Array = GodotSpeech.copy_and_clear_buffers()
 		for voice_buffer in voice_buffers:
 			# If muted, give it an empty array
-			if GroupsAudioManager.muted:
+			# TODO: remove call to VSK manager from this addon
+			if VSKAudioManager.muted:
 				voice_buffer = PoolByteArray()
 			
 			for synced_peer in synced_peers:
