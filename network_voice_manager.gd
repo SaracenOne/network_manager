@@ -1,6 +1,11 @@
 extends Node
 tool
 
+var get_speech_buffers : FuncRef = FuncRef.new()
+var get_send_id : FuncRef = FuncRef.new()
+var set_send_id : FuncRef = FuncRef.new()
+var is_muted : FuncRef = FuncRef.new()
+
 const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
 
 const entity_const = preload("res://addons/entity_manager/entity.gd")
@@ -115,34 +120,42 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
 		
-		var voice_buffers : Array = GodotSpeech.copy_and_clear_buffers()
-		for voice_buffer in voice_buffers:
-			# If muted, give it an empty array
-			# TODO: remove call to VSK manager from this addon
-			if VSKAudioManager.muted:
-				voice_buffer = PoolByteArray()
-			
-			for synced_peer in synced_peers:
-				var network_writer_state : network_writer_const = null
-				
-				if synced_peer != -1:
-					network_writer_state = voice_writers[synced_peer]
+		if get_speech_buffers.is_valid():
+			var voice_buffers : Array = get_speech_buffers.call_func()
+			for voice_buffer in voice_buffers:
+				# If muted, give it an empty array
+				if !is_muted.is_valid():
+					voice_buffer = PoolByteArray()
 				else:
-					network_writer_state = dummy_voice_writer
+					if is_muted.call_func():
+						voice_buffer = PoolByteArray()
 				
-				network_writer_state.seek(0)
+				var send_id : int
 				
-				# Voice commands
-				network_writer_state = encode_voice_buffer(p_id,
-				network_writer_state,
-				GodotSpeech.input_audio_sent_id,
-				voice_buffer,
-				!NetworkManager.is_relay() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
-				
-				if network_writer_state.get_position() > 0:
-					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
-					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
-			GodotSpeech.input_audio_sent_id += 1
+				for synced_peer in synced_peers:
+					var network_writer_state : network_writer_const = null
+					
+					if synced_peer != -1:
+						network_writer_state = voice_writers[synced_peer]
+					else:
+						network_writer_state = dummy_voice_writer
+					
+					network_writer_state.seek(0)
+					
+					send_id = get_send_id.call_func()
+					
+					# Voice commands
+					network_writer_state = encode_voice_buffer(p_id,
+					network_writer_state,
+					send_id,
+					voice_buffer,
+					!NetworkManager.is_relay() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
+					
+					if network_writer_state.get_position() > 0:
+						var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
+						NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
+				send_id += 1
+				set_send_id.call_func(send_id)
 
 func encode_voice_buffer(p_packet_sender_id : int,
 	p_network_writer : network_writer_const,
