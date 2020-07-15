@@ -173,12 +173,16 @@ func is_relay() -> bool:
 	var network_peer : NetworkedMultiplayerPeer = get_tree().multiplayer.network_peer
 	if network_peer:
 		return network_peer.server_relay
-	return true
+	else:
+		printerr("Unable to get network peer!")
+		return false
 	
 func set_relay(p_is_relay : bool) -> void:
 	var network_peer : NetworkedMultiplayerPeer = get_tree().multiplayer.network_peer
 	if network_peer:
 		network_peer.server_relay = p_is_relay
+	else:
+		printerr("Unable to get network peer!")
 	
 func is_rpc_sender_id_server() -> bool:
 	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_MASTER_PEER_ID
@@ -201,10 +205,9 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : 
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
 	net.compression_mode = compression_mode
+	net.server_relay = p_relay
 	
-	set_relay(p_relay)
-	
-	if is_relay():
+	if net.server_relay:
 		print("Attempting to host relay server...")
 	else:
 		print("Attempting to host authoritative server...")
