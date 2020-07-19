@@ -1,5 +1,4 @@
 extends NetworkLogic
-class_name NetworkModel
 
 func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> network_writer_const:
 	if p_initial_state:
