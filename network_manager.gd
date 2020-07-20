@@ -155,7 +155,7 @@ func has_active_peer() -> bool:
 	return get_tree().multiplayer.has_network_peer() and get_tree().multiplayer.network_peer.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED
 	
 func is_server() -> bool:
-	return has_active_peer() == false or get_tree().multiplayer.is_network_server()
+	return !has_active_peer() or get_tree().multiplayer.is_network_server()
 	
 func is_session_master() -> bool:
 	if !is_relay():
@@ -237,7 +237,7 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
 	net.compression_mode = compression_mode
 	
-	if p_ip.is_valid_ip_address() == false:
+	if !p_ip.is_valid_ip_address():
 		print("Invalid ip address!")
 		return false
 
@@ -298,7 +298,7 @@ func attempt_to_reassign_session_master() -> void:
 						session_master_valid = true
 						break
 						
-				if session_master_valid == false:
+				if !session_master_valid:
 					if peers.size() > 0:
 						session_master = peers[0]
 					else:
@@ -439,7 +439,7 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 
 		
 func _process(p_delta : float) -> void:
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		if is_server():
 			var peers : PoolIntArray = get_connected_peers()
 			for peer in peers:
@@ -524,7 +524,7 @@ func _ready() -> void:
 	
 	ProjectSettings.add_property_info(compression_mode_property_info)
 	
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		for current_signal in multiplayer_signal_table:
 			if get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method) != OK:
 				printerr("NetworkManager: {signal} could not be connected!".format(

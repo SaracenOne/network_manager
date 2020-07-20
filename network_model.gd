@@ -20,6 +20,6 @@ func _network_process(_delta: float) -> void:
 	._network_process(_delta)
 	
 func _ready():
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		if received_data:
 			pass

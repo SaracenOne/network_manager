@@ -47,7 +47,7 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	for child in get_children():
 		writer = child.on_serialize(writer, p_initial_state)
 		
-	if p_initial_state == false:
+	if !p_initial_state:
 		set_dirty(false)
 		
 	return writer
@@ -76,7 +76,7 @@ func _network_process(_delta: float) -> void:
 		child._network_process(_delta)
 
 func _process(_delta: float) -> void:
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		_network_process(_delta)
 
 func _ready() -> void:

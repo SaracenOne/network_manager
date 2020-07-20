@@ -59,7 +59,7 @@ func _entity_request_transfer_master(p_entity : entity_const) -> void:
 	if network_entities_pending_destruction.has(network_entities_pending_destruction.find(p_entity)):
 		return
 	else:
-		if network_entities_pending_request_transfer_master.has(p_entity) == false:
+		if !network_entities_pending_request_transfer_master.has(p_entity):
 			network_entities_pending_request_transfer_master.push_back(p_entity)
 
 """
@@ -70,7 +70,7 @@ func get_entity_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 	
 func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
-	print_debug("Creating entity instance " + p_name + " of type " + p_packed_scene.resource_path)
+	print_debug("Creating entity instance {name} of type {type}".format({"name":p_name, "type":p_packed_scene.resource_path}))
 	var instance : Node = p_packed_scene.instance()
 	instance.set_name(p_name)
 	instance.set_network_master(p_master_id)
@@ -190,15 +190,15 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	print("Spawn state = [")
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
-			print("{ " + entity.get_name() + " }")
-	print("] for " + str(p_network_id))
+			print("{ %s }" % entity.get_name())
+	print("] for %s" % str(p_network_id))
 	
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
 			var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity)
 			network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
 			
-	print("Spawn state size : " + str(network_writer_state.get_position()))
+	print("Spawn state size: %s" % str(network_writer_state.get_position()))
 		
 	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer_state)
 	
@@ -218,13 +218,13 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 			if network_entities_pending_spawn.size():
 				print("Spawning entities = [")
 				for entity in network_entities_pending_spawn:
-					print("{ " + entity.get_name() + " }")
+					print("{ %s }" % entity.get_name())
 				print("]")
 				
 			if network_entities_pending_destruction.size():
 				print("Destroying entities = [")
 				for entity in network_entities_pending_destruction:
-					print("{ " + entity.get_name() + " }")
+					print("{ %s }" % entity.get_name())
 				print("]")
 			# Debugging end
 			
@@ -319,7 +319,7 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 		return null
 	
 	# If this was not from a valid send, return null
-	if valid_sender_id == false:
+	if !valid_sender_id:
 		ErrorManager.error("decode_entity_spawn_command: received spawn command from non server ID!")
 		return null
 	
@@ -366,7 +366,7 @@ func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : 
 		return null
 		
 	# If this was not from a valid send, return null
-	if valid_sender_id == false:
+	if !valid_sender_id:
 		ErrorManager.error("decode_entity_destroy_command: received destroy command from non server ID!")
 		return null
 	
@@ -397,7 +397,7 @@ func decode_entity_request_master_command(p_packet_sender_id : int, p_network_re
 		return null
 	
 	# If this was not from a valid send, return null
-	if valid_sender_id == false:
+	if !valid_sender_id:
 		ErrorManager.error("decode_entity_request_master_command: request master command sent directly to client!")
 		return null
 	
@@ -420,7 +420,7 @@ func decode_entity_request_master_command(p_packet_sender_id : int, p_network_re
 func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_reader : network_reader_const) -> network_reader_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	
-	var valid_sender_id = false
+	var valid_sender_id : bool = false
 
 	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
 		valid_sender_id = true
@@ -444,7 +444,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 		return null
 		
 	# If this was not from a valid send, return null
-	if valid_sender_id == false:
+	if !valid_sender_id:
 		ErrorManager.error("decode_entity_transfer_master_command: received transfer master command from non server ID!")
 		return null
 	
@@ -504,7 +504,7 @@ func _server_peer_connected(p_id : int) -> void:
 	replication_writers[p_id] = network_writer
 
 func _server_peer_disconnected(p_id : int) -> void:
-	if replication_writers.erase(p_id) == false:
+	if !replication_writers.erase(p_id):
 		printerr("network_replication_manager: attempted disconnect invalid peer!")
 	
 func is_command_valid(p_command : int) -> bool:
@@ -517,5 +517,5 @@ func is_command_valid(p_command : int) -> bool:
 		return false
 	
 func _ready() -> void:
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		ConnectionUtil.connect_signal_table(signal_table, self)

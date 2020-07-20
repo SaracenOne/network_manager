@@ -16,7 +16,7 @@ var _scene_tree_table_mutex : Mutex = Mutex.new()
 # Adds an entity to the tree. Called exclusively in the main thread
 func _add_entity_instance_unsafe(p_instance : Node, p_parent : Node = null) -> void:
 	if p_parent:
-		print("Adding entity: " + p_instance.get_name())
+		print("Adding entity: %s" % p_instance.get_name())
 		if p_instance.is_inside_tree():
 			ErrorManager.fatal_error("Entity is already inside tree!")
 		else:
@@ -25,7 +25,7 @@ func _add_entity_instance_unsafe(p_instance : Node, p_parent : Node = null) -> v
 
 # Deletes an entity to the tree. Called exclusively in the main thread
 func _remove_entity_instance_unsafe(p_instance : Node) -> void:
-	print("Removing entity: " + p_instance.get_name())
+	print("Removing entity: %s" % p_instance.get_name())
 	if !p_instance.is_inside_tree():
 		p_instance.queue_free()
 		p_instance.get_parent().remove_child(p_instance)
@@ -71,8 +71,8 @@ func scene_tree_execution_command(p_command : int, p_entity_instance : Node, p_p
 	
 	match p_command:
 		ADD_ENTITY:
-			print("Scene Tree: Add Entity Command..." + p_entity_instance.get_name())
+			print("Scene Tree: Add Entity Command...%s" % p_entity_instance.get_name())
 			scene_tree_execution_table.push_front({"command":ADD_ENTITY, "instance":p_entity_instance, "parent":p_parent_instance})
 		REMOVE_ENTITY:
-			print("Scene Tree: Remove Entity Command..." + p_entity_instance.get_name())
+			print("Scene Tree: Remove Entity Command...%s" % p_entity_instance.get_name())
 			scene_tree_execution_table.push_front({"command":REMOVE_ENTITY, "instance":p_entity_instance, "parent":p_parent_instance})

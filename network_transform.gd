@@ -87,6 +87,6 @@ func _network_process(_delta: float) -> void:
 		interpolate_transform(_delta)
 
 func _ready():
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		if received_data:
 			call_deferred("update_transform", Transform(Basis(current_rotation), current_origin))

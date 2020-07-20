@@ -14,7 +14,7 @@ func on_serialize(p_writer : network_writer_const, p_initial_state : bool) -> ne
 	
 	var sleeping : bool = physics_node_root.sleeping or physics_node_root.mode != RigidBody.MODE_RIGID
 	p_writer.put_8(sleeping)
-	if sleeping == false:
+	if !sleeping:
 		var linear_velocity : Vector3 = physics_node_root.linear_velocity
 		var angular_velocity : Vector3 = physics_node_root.angular_velocity
 		p_writer.put_vector3(linear_velocity)
@@ -35,7 +35,7 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	
 	var linear_velocity : Vector3 = Vector3()
 	var angular_velocity : Vector3 = Vector3()
-	if sleeping == false:
+	if !sleeping:
 		linear_velocity = math_funcs_const.sanitise_vec3(p_reader.get_vector3())
 		angular_velocity = math_funcs_const.sanitise_vec3(p_reader.get_vector3())
 	
@@ -45,6 +45,6 @@ func on_deserialize(p_reader : network_reader_const, p_initial_state : bool) -> 
 	return p_reader
 
 func _ready():
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		if received_data:
 			pass

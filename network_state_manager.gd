@@ -138,7 +138,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 			else:
 				invalid_sender_id = true
 			
-		#if invalid_sender_id == true:
+		#if invalid_sender_id:
 		#	ErrorManager.error("Invalid state update sender id {packet_sender_id}!".format({"packet_sender_id":str(p_packet_sender_id)}))
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
@@ -165,7 +165,7 @@ func _server_peer_connected(p_id : int) -> void:
 	state_writers[p_id] = network_writer
 
 func _server_peer_disconnected(p_id : int) -> void:
-	if state_writers.erase(p_id) == false:
+	if !state_writers.erase(p_id):
 		printerr("network_state_manager: attempted disconnect invalid peer!")
 	
 func _reset_internal_timer() -> void:
@@ -179,5 +179,5 @@ func is_command_valid(p_command : int) -> bool:
 		return false
 	
 func _ready() -> void:
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		ConnectionUtil.connect_signal_table(signal_table, self)

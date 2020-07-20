@@ -51,7 +51,7 @@ static func save_packet_data(p_file : File, p_sender_peer_id : int, p_target_pee
 			NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE:
 				transfer_mode_string = "Reliable Ordered"
 			
-		var send_data_report : String = "From: " + str(p_sender_peer_id) + "- Packet sent to: " + str(p_target_peer_id) + " - Transfer Mode: " + transfer_mode_string + " - Data: " + str(p_packet.hex_encode())
+		var send_data_report : String = "From: %s - Packet sent to: %s - Transfer Mode: %s - Data: %s" % [str(p_sender_peer_id), str(p_target_peer_id), transfer_mode_string, str(p_packet.hex_encode())]
 		p_file.store_line(send_data_report)
 
 func queue_packet_for_send(p_ref_pool : ref_pool_const, p_id : int, p_transfer_mode : int) -> void:
@@ -89,7 +89,7 @@ func ordered_inserted(p_packet : Reference, p_time_sorted_queue : Array, p_packe
 				break
 				
 		# If the packet was not inserted, put it in the end of the queue
-		if packet_inserted == false:
+		if !packet_inserted:
 			p_time_sorted_queue.append(p_packet)
 	else:
 		p_time_sorted_queue.append(p_packet)
@@ -185,12 +185,9 @@ func _ready() -> void:
 		sent_data_file = File.new()
 		var datetime : Dictionary = OS.get_datetime(true)
 		
-		sent_data_file.open("user://sent_data_file_" + str(datetime.year) + "_" \
-		+ str(datetime.month) + "_" \
-		+ str(datetime.day) + "_" \
-		+ str(datetime.hour) + "_" \
-		+ str(datetime.minute) + "_" \
-		+ str(datetime.second), File.WRITE)
+		sent_data_file.open("user://sent_data_file_%s_%s_%s_%s_%s_%s" \
+		% [str(datetime.year), str(datetime.month), str(datetime.day), str(datetime.hour), str(datetime.minute), str(datetime.second)], \
+		File.WRITE)
 	
 	if ProjectSettings.has_setting("network/config/simulate_network_conditions"):
 		simulate_network_conditions = ProjectSettings.get_setting("network/config/simulate_network_conditions")

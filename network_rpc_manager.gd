@@ -250,9 +250,9 @@ func _server_peer_connected(p_id : int) -> void:
 	rpc_unreliable_writers[p_id] = rpc_unreliable_writer
 
 func _server_peer_disconnected(p_id : int) -> void:
-	if rpc_reliable_writers.erase(p_id) == false:
+	if !rpc_reliable_writers.erase(p_id):
 		printerr("network_rpc_manager: attempted disconnect invalid peer!")
-	if rpc_unreliable_writers.erase(p_id) == false:
+	if !rpc_unreliable_writers.erase(p_id):
 		printerr("network_rpc_manager: attempted disconnect invalid peer!")
 	
 func is_command_valid(p_command : int) -> bool:
@@ -263,5 +263,5 @@ func is_command_valid(p_command : int) -> bool:
 		return false
 	
 func _ready() -> void:
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		ConnectionUtil.connect_signal_table(signal_table, self)

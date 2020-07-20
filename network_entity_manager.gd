@@ -145,7 +145,7 @@ func register_network_instance_id(p_network_instance_id : int, p_network_idenity
 	
 # Unregisters a network_instance from the network_instance_id map
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
-	if network_instance_ids.erase(p_network_instance_id) == false:
+	if !network_instance_ids.erase(p_network_instance_id):
 		ErrorManager.error("Could not unregister network instance id: {network_instance_id}".format({"network_instance_id":str(p_network_instance_id)}))
 	
 # Returns the network identity node for a given network instance id
@@ -171,7 +171,7 @@ func _ready() -> void:
 	
 	ProjectSettings.add_property_info(networked_objects_property_info)
 	
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		var network_scenes_config = ProjectSettings.get_setting("network/config/networked_scenes")
 		if typeof(network_scenes_config) != TYPE_STRING_ARRAY:
 			networked_scenes = Array()

@@ -117,5 +117,5 @@ func is_command_valid(p_command : int) -> bool:
 		return false
 	
 func _ready() -> void:
-	if Engine.is_editor_hint() == false:
+	if !Engine.is_editor_hint():
 		ConnectionUtil.connect_signal_table(signal_table, self)
