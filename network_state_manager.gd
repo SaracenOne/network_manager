@@ -78,7 +78,7 @@ func scrape_and_send_state_data(p_id : int, p_synced_peer : int, p_entities : Ar
 			var entity_master : int = entity.get_network_master()
 			if p_synced_peer != entity_master:
 				var is_valid_entity : bool = false
-				if p_id == NetworkManager.SERVER_MASTER_PEER_ID:
+				if p_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID:
 					is_valid_entity = true
 				else:
 					if (entity_master == p_id):
@@ -127,13 +127,13 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 		var invalid_sender_id = false
 		if !NetworkManager.is_relay():
 			# Only the server will accept state updates for entities directly and other clients will accept them from the host
-			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or (p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID and network_instance_master != NetworkManager.get_current_peer_id()):
+			if(NetworkManager.is_server() and network_instance_master == p_packet_sender_id) or (p_packet_sender_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID and network_instance_master != NetworkManager.get_current_peer_id()):
 				network_identity_instance.update_state(p_network_reader, false)
 			else:
 				invalid_sender_id = true
 		else:
 			# In a non-authoritive context, everyone is responsible for their own state updates, though the server can override
-			if network_instance_master == p_packet_sender_id or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+			if network_instance_master == p_packet_sender_id or p_packet_sender_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID:
 				network_identity_instance.update_state(p_network_reader, false)
 			else:
 				invalid_sender_id = true
@@ -154,11 +154,13 @@ func decode_state_buffer(p_packet_sender_id : int, p_network_reader : network_re
 	
 func _game_hosted() -> void:
 	state_writers = {}
+	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_STATE_PACKET_SIZE)
+	state_writers[NetworkManager.network_constants_const.ALL_PEERS] = network_writer
 	
 func _connected_to_server() -> void:
 	state_writers = {}
 	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_STATE_PACKET_SIZE)
-	state_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_writer
+	state_writers[NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID] = network_writer
 	
 func _server_peer_connected(p_id : int) -> void:
 	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_STATE_PACKET_SIZE)

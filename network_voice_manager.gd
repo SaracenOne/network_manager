@@ -65,7 +65,7 @@ func decode_voice_command(
 	if p_network_reader.is_eof():
 		return null
 		
-	if !NetworkManager.is_relay() and p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+	if !NetworkManager.is_relay() and p_packet_sender_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID:
 		sender_id = p_network_reader.get_u32()
 		if p_network_reader.is_eof():
 			return null
@@ -149,7 +149,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 					network_writer_state,
 					send_id,
 					voice_buffer,
-					!NetworkManager.is_relay() and synced_peer != NetworkManager.SERVER_MASTER_PEER_ID)
+					!NetworkManager.is_relay() and synced_peer != NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID)
 					
 					if network_writer_state.get_position() > 0:
 						var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
@@ -185,7 +185,7 @@ func _game_hosted() -> void:
 func _connected_to_server() -> void:
 	voice_writers = {}
 	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_VOICE_PACKET_SIZE)
-	voice_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_writer
+	voice_writers[NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID] = network_writer
 	
 func _server_peer_connected(p_id : int) -> void:
 	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_VOICE_PACKET_SIZE)

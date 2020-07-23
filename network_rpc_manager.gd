@@ -237,11 +237,11 @@ func _game_hosted() -> void:
 func _connected_to_server() -> void:
 	rpc_reliable_writers = {}
 	var network_reliable_writer : network_writer_const = network_writer_const.new(MAXIMUM_RPC_PACKET_SIZE)
-	rpc_reliable_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_reliable_writer
+	rpc_reliable_writers[NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID] = network_reliable_writer
 	
 	rpc_unreliable_writers = {}
 	var network_unreliable_writer : network_writer_const = network_writer_const.new(MAXIMUM_RPC_PACKET_SIZE)
-	rpc_unreliable_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_unreliable_writer
+	rpc_unreliable_writers[NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID] = network_unreliable_writer
 	
 func _server_peer_connected(p_id : int) -> void:
 	var rpc_reliable_writer : network_writer_const = network_writer_const.new(MAXIMUM_RPC_PACKET_SIZE)

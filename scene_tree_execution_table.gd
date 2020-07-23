@@ -26,7 +26,7 @@ func _add_entity_instance_unsafe(p_instance : Node, p_parent : Node = null) -> v
 # Deletes an entity to the tree. Called exclusively in the main thread
 func _remove_entity_instance_unsafe(p_instance : Node) -> void:
 	print("Removing entity: %s" % p_instance.get_name())
-	if !p_instance.is_inside_tree():
+	if p_instance.is_inside_tree():
 		p_instance.queue_free()
 		p_instance.get_parent().remove_child(p_instance)
 	else:

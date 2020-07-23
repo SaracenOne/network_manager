@@ -7,12 +7,6 @@ const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 const network_constants_const = preload("network_constants.gd")
 
-const LOCALHOST_IP = "127.0.0.1"
-
-const ALL_PEERS : int = 0
-const SERVER_MASTER_PEER_ID : int = 1
-const PEER_PENDING_TIMEOUT : int = 20
-
 var multiplayer_signal_table : Array = [
 	{"signal":"network_peer_connected", "method":"_network_peer_connected"},
 	{"signal":"network_peer_disconnected", "method":"_network_peer_disconnected"},
@@ -22,17 +16,11 @@ var multiplayer_signal_table : Array = [
 	{"signal":"network_peer_packet", "method":"_network_peer_packet"},
 ]
 
+var is_relay : bool = false
+
 var kill_flag : bool = false
 onready var gameroot = get_tree().get_root()
 
-enum validation_state_enum {
-	VALIDATION_STATE_NONE,
-	VALIDATION_STATE_CONNECTION,
-	VALIDATION_STATE_PEERS_SENT,
-	VALIDATION_STATE_INFO_SENT,
-	VALIDATION_STATE_STATE_SENT,
-	VALIDATION_STATE_SYNCED
-}
 
 const network_replication_manager_const = preload("network_replication_manager.gd")
 const network_state_manager_const = preload("network_state_manager.gd")
@@ -40,6 +28,8 @@ const network_voice_manager_const = preload("network_voice_manager.gd")
 const network_entity_manager_const = preload("network_entity_manager.gd")
 const network_flow_manager_const = preload("network_flow_manager.gd")
 const network_handshake_manager_const = preload("network_handshake_manager.gd")
+
+var server_mode 
 
 var network_replication_manager : Node = null
 var network_state_manager : Node = null
@@ -51,7 +41,7 @@ var network_handshake_manager : Node = null
 var compression_mode : int = NetworkedMultiplayerENet.COMPRESS_NONE
 
 # Client
-var join_ip : String = LOCALHOST_IP
+var join_ip : String = network_constants_const.LOCALHOST_IP
 var join_port : int = 7777
 
 var received_packet_buffer_count : Dictionary = {}
@@ -73,7 +63,7 @@ var peer_data : Dictionary = {}
 var active_port : int = -1
 var active_ip : String = ""
 
-var client_state : int = validation_state_enum.VALIDATION_STATE_NONE
+var client_state : int = network_constants_const.validation_state_enum.VALIDATION_STATE_NONE
 var active_peers : Array = [] # Peers requesting state updates
 
 const DUMMY_PEER_COUNT : int = 0
@@ -110,23 +100,26 @@ func server_peer_ready(p_network_id : int) -> void:
 	attempt_to_reassign_session_master()
 
 func _network_peer_connected(p_id : int) -> void:
-	peer_data[p_id] = {"validation_state":validation_state_enum.VALIDATION_STATE_NONE, "time_since_last_update":0.0}
+	peer_data[p_id] = {\
+	"validation_state":network_constants_const.validation_state_enum.VALIDATION_STATE_NONE,\
+	"time_since_last_update":0.0}
+	
 	print("Network peer {id} connected!".format({"id":str(p_id)}))
-	if is_relay():
-		if client_state == validation_state_enum.VALIDATION_STATE_SYNCED:
+	if !is_relay():
+		if client_state == network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED:
 			network_handshake_manager.ready_command(p_id)
 		if is_server():
 			network_handshake_manager.current_master_id()
-	emit_signal("server_peer_connected", p_id)
+			emit_signal("server_peer_connected", p_id)
 
 func _network_peer_disconnected(p_id : int) -> void:
 	print("Network peer {id} disconnected!".format({"id":str(p_id)}))
-	active_peers = []
-	emit_signal("server_peer_disconnected", p_id)
-	if is_server():
-		peer_data.erase(p_id)
-		if is_relay():
-			attempt_to_reassign_session_master()
+	if !is_relay():
+		if is_server():
+			network_handshake_manager.disconnect_command(p_id)
+			unregister_peer(p_id)
+	else:
+		printerr("Disconnected peer for relay mode not implemented!")
 
 #Clients
 func _connected_to_server() -> void:
@@ -170,22 +163,13 @@ func request_network_kill() -> void:
 # If this is true, the sessions allows packets to be sent directly to other
 # peers and peers will be automatically notified when new peers have joined
 func is_relay() -> bool:
-	var network_peer : NetworkedMultiplayerPeer = get_tree().multiplayer.network_peer
-	if network_peer:
-		return network_peer.server_relay
-	else:
-		printerr("Unable to get network peer!")
-		return false
+	return is_relay
 	
 func set_relay(p_is_relay : bool) -> void:
-	var network_peer : NetworkedMultiplayerPeer = get_tree().multiplayer.network_peer
-	if network_peer:
-		network_peer.server_relay = p_is_relay
-	else:
-		printerr("Unable to get network peer!")
+	is_relay = p_is_relay
 	
 func is_rpc_sender_id_server() -> bool:
-	return get_tree().multiplayer.get_rpc_sender_id() == SERVER_MASTER_PEER_ID
+	return get_tree().multiplayer.get_rpc_sender_id() == network_constants_const.SERVER_MASTER_PEER_ID
 
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : bool = true) -> bool:
 	if has_active_peer():
@@ -201,11 +185,12 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : 
 		active_port = p_port
 	else:
 		active_port = host_port
-	active_ip = LOCALHOST_IP
+	active_ip = network_constants_const.LOCALHOST_IP
 	
 	var net : NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
 	net.compression_mode = compression_mode
 	net.server_relay = p_relay
+	set_relay(p_relay)
 	
 	if net.server_relay:
 		print("Attempting to host relay server...")
@@ -262,7 +247,7 @@ func reset_session_data() -> void:
 	
 	peer_data = {}
 	active_port = -1
-	client_state = validation_state_enum.VALIDATION_STATE_NONE
+	client_state = network_constants_const.validation_state_enum.VALIDATION_STATE_NONE
 	var peers : PoolIntArray = get_connected_peers()
 	for peer_id in peers:
 		emit_signal("peer_unregistered", peer_id)
@@ -287,7 +272,7 @@ func attempt_to_reassign_session_master() -> void:
 	if is_server():
 		if is_relay():
 			var peers : PoolIntArray = get_connected_peers()
-			if session_master == SERVER_MASTER_PEER_ID:
+			if session_master == network_constants_const.SERVER_MASTER_PEER_ID:
 				if peers.size() > 0:
 					session_master = peers[0]
 					session_master_reassigned = true
@@ -302,7 +287,7 @@ func attempt_to_reassign_session_master() -> void:
 					if peers.size() > 0:
 						session_master = peers[0]
 					else:
-						session_master = SERVER_MASTER_PEER_ID
+						session_master = network_constants_const.SERVER_MASTER_PEER_ID
 						
 					session_master_reassigned = true
 					
@@ -312,7 +297,7 @@ func get_current_peer_id() -> int:
 		var id : int = get_tree().multiplayer.get_network_unique_id()
 		return id
 	else:
-		return SERVER_MASTER_PEER_ID
+		return network_constants_const.SERVER_MASTER_PEER_ID
 	
 # Test to see if the peer with this id is connected
 func peer_is_connected(p_id : int) -> bool:
@@ -368,17 +353,17 @@ remote func peer_validation_state_error_callback() -> void:
 
 func confirm_client_ready_for_sync(p_network_id : int) -> void:
 	print("confirm_client_ready_for_sync...")
-	if peer_data[p_network_id].validation_state != validation_state_enum.VALIDATION_STATE_STATE_SENT:
+	if peer_data[p_network_id].validation_state != network_constants_const.validation_state_enum.VALIDATION_STATE_STATE_SENT:
 		peer_validation_state_error_callback()
 	else:
 		peer_data[p_network_id].time_since_last_update = 0.0
-		peer_data[p_network_id].validation_state = validation_state_enum.VALIDATION_STATE_SYNCED
+		peer_data[p_network_id].validation_state = network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
 		
 		active_peers.push_back(p_network_id)
 		
 func confirm_server_ready_for_sync() -> void:
 	print("confirm_server_ready_for_sync...")
-	client_state = validation_state_enum.VALIDATION_STATE_SYNCED
+	client_state = network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
 		
 func server_kick_player(p_id : int) -> void:
 	print("server_kick_player...")
@@ -446,20 +431,20 @@ func _process(p_delta : float) -> void:
 				peer_data[peer].time_since_last_update += p_delta
 				
 		if has_active_peer():
-			if is_server() or client_state == validation_state_enum.VALIDATION_STATE_SYNCED:
+			if is_server() or client_state == network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED:
 				emit_signal("network_process", get_tree().multiplayer.get_network_unique_id(), p_delta)
 				
 		network_flow_manager.process_network_packets(p_delta)
 	
 func copy_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> Array:
 	var synced_peers : Array = []
-	if p_id == session_master or p_id == SERVER_MASTER_PEER_ID:
+	if p_id == session_master or p_id == network_constants_const.SERVER_MASTER_PEER_ID:
 		synced_peers = copy_active_peers()
 	else:
-		if !is_relay():
-			synced_peers = [ALL_PEERS]
+		if is_relay():
+			synced_peers = [network_constants_const.ALL_PEERS]
 		else:
-			synced_peers = [SERVER_MASTER_PEER_ID]
+			synced_peers = [network_constants_const.SERVER_MASTER_PEER_ID]
 			
 	# For debugging purposes
 	if !is_relay():
@@ -470,24 +455,36 @@ func copy_valid_send_peers(p_id : int, p_include_dummy_peers : bool = false) -> 
 	return synced_peers
 	
 func get_default_server_info() -> Dictionary:
+	var server_type : String
+	if is_relay():
+		server_type = network_constants_const.RELAY_SERVER_NAME
+	else:
+		server_type = network_constants_const.AUTHORITATIVE_SERVER_NAME
+	
 	return {
-		"server_type":is_relay(),
+		"server_type":server_type,
 		}
 	
 func get_network_scene_paths() -> Array:
 	return network_entity_manager.get_network_scene_paths()
 	
 func client_request_server_info(p_client_info : Dictionary) -> void:
-	network_handshake_manager.rpc_id(NetworkManager.SERVER_MASTER_PEER_ID, "requested_server_info", p_client_info)
+	network_handshake_manager.rpc_id(NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID, "requested_server_info", p_client_info)
 
 func client_request_server_state(p_client_state : Dictionary) -> void:
-	network_handshake_manager.rpc_id(NetworkManager.SERVER_MASTER_PEER_ID, "requested_server_state", {})
+	network_handshake_manager.rpc_id(NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID, "requested_server_state", {})
 	
 func server_send_server_info(p_network_id : int, p_server_info : Dictionary) -> void:
 	network_handshake_manager.rpc_id(p_network_id, "received_server_info", p_server_info)
 	
 func server_send_server_state(p_network_id : int, p_server_state : Dictionary) -> void:
 	network_handshake_manager.rpc_id(p_network_id, "received_server_state", p_server_state)
+	
+func unregister_peer(p_id) -> void:
+	peer_data.erase(p_id)
+	print("peer_unregistered:{id}".format({"id":str(p_id)}))
+	emit_signal("peer_unregistered", p_id)
+	emit_signal("peer_list_changed")
 	
 func _ready() -> void:
 	if ProjectSettings.has_setting("network/config/entity_root_node"):

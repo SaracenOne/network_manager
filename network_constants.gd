@@ -1,5 +1,23 @@
 extends Node
 
+const AUTHORITATIVE_SERVER_NAME = "authoritative"
+const RELAY_SERVER_NAME = "relay"
+
+const LOCALHOST_IP = "127.0.0.1"
+
+const ALL_PEERS : int = 0
+const SERVER_MASTER_PEER_ID : int = 1
+const PEER_PENDING_TIMEOUT : int = 20
+
+enum validation_state_enum {
+	VALIDATION_STATE_NONE,
+	VALIDATION_STATE_CONNECTION,
+	VALIDATION_STATE_PEERS_SENT,
+	VALIDATION_STATE_INFO_SENT,
+	VALIDATION_STATE_STATE_SENT,
+	VALIDATION_STATE_SYNCED
+}
+
 # A list of all the network commands which can be sent or received.
 enum {
 	UPDATE_ENTITY_COMMAND = 0,
@@ -13,8 +31,13 @@ enum {
 	INFO_REQUEST_COMMAND,
 	STATE_REQUEST_COMMAND,
 	READY_COMMAND,
+	DISCONNECT_COMMAND,
 	MAP_CHANGING_COMMAND,
 	SESSION_MASTER_COMMAND
+}
+
+enum {
+	
 }
 
 # Returns a string name for a corresponding network command

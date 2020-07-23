@@ -69,7 +69,7 @@ func _entity_request_transfer_master(p_entity : entity_const) -> void:
 func get_entity_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 	
-func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
+func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID) -> Node:
 	print_debug("Creating entity instance {name} of type {type}".format({"name":p_name, "type":p_packed_scene.resource_path}))
 	var instance : Node = p_packed_scene.instance()
 	instance.set_name(p_name)
@@ -77,7 +77,7 @@ func create_entity_instance(p_packed_scene : PackedScene, p_name : String = "Net
 	
 	return instance
 	
-func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.SERVER_MASTER_PEER_ID) -> Node:
+func instantiate_entity(p_packed_scene : PackedScene, p_name : String = "NetEntity", p_master_id : int = NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID) -> Node:
 	var instance : Node = create_entity_instance(p_packed_scene, p_name, p_master_id)
 	NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY, instance, null)
 	
@@ -292,7 +292,7 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	var valid_sender_id = false
 
-	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID:
 		valid_sender_id = true
 	
 	if p_network_reader.is_eof():
@@ -353,7 +353,7 @@ func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : 
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	var valid_sender_id = false
 
-	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID:
 		valid_sender_id = true	
 	
 	if p_network_reader.is_eof():
@@ -422,7 +422,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 	
 	var valid_sender_id : bool = false
 
-	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.SERVER_MASTER_PEER_ID:
+	if p_packet_sender_id == NetworkManager.session_master or p_packet_sender_id == NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID:
 		valid_sender_id = true
 		
 	if p_network_reader.is_eof():
@@ -497,7 +497,7 @@ func _game_hosted() -> void:
 func _connected_to_server() -> void:
 	replication_writers = {}
 	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_REPLICATION_PACKET_SIZE)
-	replication_writers[NetworkManager.SERVER_MASTER_PEER_ID] = network_writer
+	replication_writers[NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID] = network_writer
 	
 func _server_peer_connected(p_id : int) -> void:
 	var network_writer : network_writer_const = network_writer_const.new(MAXIMUM_REPLICATION_PACKET_SIZE)
