@@ -112,7 +112,8 @@ func decode_voice_command(
 					var raw_data : PoolByteArray = network_writer_state.get_raw_data(network_writer_state.get_position())
 					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 	
-	NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
+	if !NetworkManager.server_dedicated:
+		NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
 	
 	return p_network_reader
 		
