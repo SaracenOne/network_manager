@@ -63,7 +63,7 @@ func queue_packet_for_send(p_ref_pool : ref_pool_const, p_id : int, p_transfer_m
 		NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE:
 			reliable_packet_queue.push_back(PendingPacket.new(p_id, p_ref_pool))
 		_:
-			printerr("Attempted to queue packet with invalid transfer mode!")
+			NetworkLogger.error("Attempted to queue packet with invalid transfer mode!")
 
 func send_packet_queue(p_packet_queue : Array, p_transfer_mode : int):
 	if get_tree().multiplayer.get_network_peer():
@@ -74,7 +74,7 @@ func send_packet_queue(p_packet_queue : Array, p_transfer_mode : int):
 			or NetworkManager.peer_is_connected(packet.id):
 				var send_bytes_result : int = get_tree().multiplayer.send_bytes(packet.ref_pool.pool_byte_array, packet.id, p_transfer_mode)
 				if send_bytes_result != OK:
-					ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
+					NetworkLogger.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 				else:
 					if LOG_SENT_DATA:
 						save_packet_data(sent_data_file, NetworkManager.get_current_peer_id(), packet.id, p_transfer_mode, packet.ref_pool.pool_byte_array)
@@ -140,7 +140,7 @@ func setup_and_send_ordered_queue(p_time : float, p_queue : Array, p_time_sorted
 			or NetworkManager.peer_is_connected(packet.id):
 				var send_bytes_result : int = get_tree().multiplayer.send_bytes(packet.ref_pool.pool_byte_array, packet.id, p_transfer_mode)
 				if send_bytes_result != OK:
-					ErrorManager.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
+					NetworkLogger.error("Send bytes error: {send_bytes_result}".format({"send_bytes_result":str(send_bytes_result)}))
 				else:
 					if LOG_SENT_DATA:
 						save_packet_data(sent_data_file, NetworkManager.get_current_peer_id(), packet.id, p_transfer_mode, packet.ref_pool.pool_byte_array)

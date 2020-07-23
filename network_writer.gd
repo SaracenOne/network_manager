@@ -26,13 +26,13 @@ func resize(p_resize) -> void:
 
 func seek(p_position : int) -> void:
 	if p_position > get_size():
-		ErrorManager.error("Tried to seek beyond size of buffer!")
+		NetworkLogger.error("Tried to seek beyond size of buffer!")
 	else:
 		stream_peer_buffer.seek(p_position)
 
 func put_data(p_data : PoolByteArray) -> void:
 	if stream_peer_buffer.put_data(p_data) != OK:
-		printerr("put_data returned an error!")
+		NetworkLogger.error("put_data returned an error!")
 
 func put_writer(p_writer, p_size : int = 0) -> void:
 	if p_writer.get_size() == p_size or p_size <= 0:
@@ -87,7 +87,7 @@ func put_8bit_pascal_string(p_value : String, p_utf8 : bool) -> void:
 		buffer = p_value.to_ascii()
 		
 	if buffer.size() >= 255:
-		printerr("Pascal string too long!")
+		NetworkLogger.error("Pascal string too long!")
 		put_8(0)
 	else:
 		put_8(buffer.size())

@@ -16,16 +16,16 @@ func nm_rpc_called(p_caller_id : int, p_method_id : int, p_arg_array : Array):
 				if rpc_mode == MultiplayerAPI.RPC_MODE_PUPPET or MultiplayerAPI.RPC_MODE_PUPPETSYNC:
 					callv("method_name", p_arg_array)
 				else:
-					printerr("Cannot call {method_name} from peer {caller_id}!".format(\
+					NetworkLogger.error("Cannot call {method_name} from peer {caller_id}!".format(\
 					{"method_name":method_name, "caller_id":str(p_caller_id)}))
 			else:
 				if rpc_mode == MultiplayerAPI.RPC_MODE_MASTER or MultiplayerAPI.RPC_MODE_MASTERSYNC:
 					callv("method_name", p_arg_array)
 				else:
-					printerr("Cannot call {method_name} from peer {caller_id}!".format(\
+					NetworkLogger.error("Cannot call {method_name} from peer {caller_id}!".format(\
 					{"method_name":method_name, "caller_id":str(p_caller_id)}))
 	else:
-		printerr("Cannot find method for id %s!" % str(p_method_id))
+		NetworkLogger.error("Cannot find method for id %s!" % str(p_method_id))
 		
 func nm_rset_called(p_caller_id : int, p_property_id : int, p_value):
 	var keys : Array = virtual_rpc_property_table.keys()
@@ -39,16 +39,16 @@ func nm_rset_called(p_caller_id : int, p_property_id : int, p_value):
 				if rpc_mode == MultiplayerAPI.RPC_MODE_PUPPET or MultiplayerAPI.RPC_MODE_PUPPETSYNC:
 					set(property_name, p_value)
 				else:
-					printerr("Cannot set {property_name} from peer {caller_id}!".format(\
+					NetworkLogger.error("Cannot set {property_name} from peer {caller_id}!".format(\
 					{"property_name":property_name, "caller_id":str(p_caller_id)}))
 			else:
 				if rpc_mode == MultiplayerAPI.RPC_MODE_MASTER or MultiplayerAPI.RPC_MODE_MASTERSYNC:
 					set(property_name, p_value)
 				else:
-					printerr("Cannot set {property_name} from peer {caller_id}!".format(\
+					NetworkLogger.error("Cannot set {property_name} from peer {caller_id}!".format(\
 					{"property_name":property_name, "caller_id":str(p_caller_id)}))
 	else:
-		printerr("Cannot find property for id %s!" % str(p_property_id))
+		NetworkLogger.error("Cannot find property for id %s!" % str(p_property_id))
 		
 
 func _nm_rpcp(p_peer_id : int, p_unreliable : bool, p_method : String, p_arg_array : Array):
@@ -67,7 +67,7 @@ func _nm_rpcp(p_peer_id : int, p_unreliable : bool, p_method : String, p_arg_arr
 	if id >= 0:
 		pass
 	else:
-		printerr("Could not find method id for %s!" % p_method)
+		NetworkLogger.error("Could not find method id for %s!" % p_method)
 
 func _nm_rsetp(p_peer_id : int, p_unreliable : bool, p_property : String, p_value):
 	var keys : Array = virtual_rpc_property_table.keys()
@@ -85,7 +85,7 @@ func _nm_rsetp(p_peer_id : int, p_unreliable : bool, p_property : String, p_valu
 	if id >= 0:
 		pass
 	else:
-		printerr("Could not find property id for %s!" % p_property)
+		NetworkLogger.error("Could not find property id for %s!" % p_property)
 
 func nm_rpc(p_method : String, p_arg_array : Array):
 	_nm_rpcp(0, false, p_method, p_arg_array)

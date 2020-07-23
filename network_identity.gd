@@ -21,14 +21,14 @@ func set_network_instance_id(p_id : int) -> void:
 			network_instance_id = p_id
 			NetworkManager.network_entity_manager.register_network_instance_id(network_instance_id, self)
 		else:
-			printerr("network_instance_id has already been assigned")
+			NetworkLogger.error("network_instance_id has already been assigned")
 
 func set_network_scene_id(p_id : int) -> void:
 	if !Engine.is_editor_hint():
 		if network_scene_id == -1:
 			network_scene_id = p_id
 		else:
-			printerr("network_scene_id has already been assigned")
+			NetworkLogger.error("network_scene_id has already been assigned")
 
 func on_exit() -> void:
 	if !Engine.is_editor_hint():
@@ -67,7 +67,7 @@ func _ready() -> void:
 		
 		entity_node.add_to_group("NetworkedEntities")
 		if entity_node.connect("entity_deletion", self, "on_exit") != OK:
-			ErrorManager.error("Could not connect entity_deletion!")
+			NetworkLogger.error("Could not connect entity_deletion!")
 			
 func _threaded_instance_setup(p_instance_id : int, p_network_reader : Reference) -> void:
 	cache_nodes()

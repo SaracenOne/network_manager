@@ -119,7 +119,7 @@ func get_next_network_id() -> int:
 	var network_instance_id : int = next_network_instance_id
 	next_network_instance_id += 1
 	if next_network_instance_id >= LAST_NETWORK_INSTANCE_ID:
-		print("Maximum network instance ids used. Reverting to first")
+		NetworkLogger.printl("Maximum network instance ids used. Reverting to first")
 		next_network_instance_id = FIRST_NETWORK_INSTANCE_ID
 		
 	# If the instance id is already in use, keep iterating until
@@ -128,7 +128,7 @@ func get_next_network_id() -> int:
 		network_instance_id = next_network_instance_id
 		next_network_instance_id += 1
 		if next_network_instance_id >= LAST_NETWORK_INSTANCE_ID:
-			print("Maximum network instance ids used. Reverting to first")
+			NetworkLogger.printl("Maximum network instance ids used. Reverting to first")
 			next_network_instance_id = FIRST_NETWORK_INSTANCE_ID
 	
 	return network_instance_id
@@ -138,7 +138,7 @@ func get_next_network_id() -> int:
 # entities
 func register_network_instance_id(p_network_instance_id : int, p_network_idenity : Node) -> void:
 	if network_instance_ids.size() > max_networked_entities:
-		ErrorManager.error("EXCEEDED MAXIMUM ALLOWED INSTANCE IDS!")
+		NetworkLogger.error("EXCEEDED MAXIMUM ALLOWED INSTANCE IDS!")
 		return
 	
 	network_instance_ids[p_network_instance_id] = p_network_idenity
@@ -146,7 +146,7 @@ func register_network_instance_id(p_network_instance_id : int, p_network_idenity
 # Unregisters a network_instance from the network_instance_id map
 func unregister_network_instance_id(p_network_instance_id : int) -> void:
 	if !network_instance_ids.erase(p_network_instance_id):
-		ErrorManager.error("Could not unregister network instance id: {network_instance_id}".format({"network_instance_id":str(p_network_instance_id)}))
+		NetworkLogger.error("Could not unregister network instance id: {network_instance_id}".format({"network_instance_id":str(p_network_instance_id)}))
 	
 # Returns the network identity node for a given network instance id
 func get_network_instance_identity(p_network_instance_id : int) -> Node:

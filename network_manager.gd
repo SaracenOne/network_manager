@@ -104,7 +104,7 @@ func _network_peer_connected(p_id : int) -> void:
 	"validation_state":network_constants_const.validation_state_enum.VALIDATION_STATE_NONE,\
 	"time_since_last_update":0.0}
 	
-	print("Network peer {id} connected!".format({"id":str(p_id)}))
+	NetworkLogger.printl("Network peer {id} connected!".format({"id":str(p_id)}))
 	if !is_relay():
 		if client_state == network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED:
 			network_handshake_manager.ready_command(p_id)
@@ -113,13 +113,13 @@ func _network_peer_connected(p_id : int) -> void:
 			emit_signal("server_peer_connected", p_id)
 
 func _network_peer_disconnected(p_id : int) -> void:
-	print("Network peer {id} disconnected!".format({"id":str(p_id)}))
+	NetworkLogger.printl("Network peer {id} disconnected!".format({"id":str(p_id)}))
 	if !is_relay():
 		if is_server():
 			network_handshake_manager.disconnect_command(p_id)
 			unregister_peer(p_id)
 	else:
-		printerr("Disconnected peer for relay mode not implemented!")
+		NetworkLogger.error("Disconnected peer for relay mode not implemented!")
 
 #Clients
 func _connected_to_server() -> void:
@@ -130,11 +130,11 @@ func _connected_to_server() -> void:
 	emit_signal("peer_registration_complete")
 
 func _connection_failed() -> void:
-	print("Connection failed")
+	NetworkLogger.printl("Connection failed")
 	emit_signal("connection_failed")
 	
 func _server_disconnected() -> void:
-	print("Server disconnected")
+	NetworkLogger.printl("Server disconnected")
 	emit_signal("server_disconnected")
 	
 func get_entity_root_node() -> Node:
@@ -173,7 +173,7 @@ func is_rpc_sender_id_server() -> bool:
 
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : bool = true) -> bool:
 	if has_active_peer():
-		printerr("Network peer already established!")
+		NetworkLogger.error("Network peer already established!")
 		return false
 	
 	reset_session_data()
@@ -193,20 +193,20 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : 
 	set_relay(p_relay)
 	
 	if net.server_relay:
-		print("Attempting to host relay server...")
+		NetworkLogger.printl("Attempting to host relay server...")
 	else:
-		print("Attempting to host authoritative server...")
+		NetworkLogger.printl("Attempting to host authoritative server...")
 
 	if (net.create_server(active_port, max_players) != OK):
-		print("Cannot create a server on port {port}!".format({"port":str(active_port)}))
+		NetworkLogger.printl("Cannot create a server on port {port}!".format({"port":str(active_port)}))
 		return false
 		
 	get_tree().multiplayer.set_network_peer(net)
 	get_tree().multiplayer.set_allow_object_decoding(false)
 	
 	if server_dedicated:
-		print("Server hosted on port {port}".format({"port":str(active_port)}))
-		print("Max clients: {max_players}".format({"port":str(max_players)}))
+		NetworkLogger.printl("Server hosted on port {port}".format({"port":str(active_port)}))
+		NetworkLogger.printl("Max clients: {max_players}".format({"port":str(max_players)}))
 	
 	emit_signal("game_hosted")
 	
@@ -214,7 +214,7 @@ func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : 
 	
 func join_game(p_ip : String, p_port : int) -> bool:
 	if has_active_peer():
-		printerr("Network peer already established!")
+		NetworkLogger.error("Network peer already established!")
 		return false
 	
 	reset_session_data()
@@ -223,11 +223,11 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	net.compression_mode = compression_mode
 	
 	if !p_ip.is_valid_ip_address():
-		print("Invalid ip address!")
+		NetworkLogger.printl("Invalid ip address!")
 		return false
 
 	if net.create_client(p_ip, p_port) != OK:
-		print("Cannot create a client on ip {ip} & port {port}!".format(
+		NetworkLogger.printl("Cannot create a client on ip {ip} & port {port}!".format(
 		{"ip":p_ip, "port":str(p_port)}))
 		return false
 		
@@ -237,13 +237,13 @@ func join_game(p_ip : String, p_port : int) -> bool:
 	get_tree().multiplayer.set_network_peer(net)
 	get_tree().multiplayer.set_allow_object_decoding(false)
 
-	print("Connecting to {ip} : {port}!".format(
+	NetworkLogger.printl("Connecting to {ip} : {port}!".format(
 		{"ip":p_ip, "port":str(p_port)}))
 	
 	return true
 	
 func reset_session_data() -> void:
-	print("Resetting session data")
+	NetworkLogger.printl("Resetting session data")
 	
 	peer_data = {}
 	active_port = -1
@@ -260,7 +260,7 @@ func reset_session_data() -> void:
 	
 func force_close_connection() -> void:
 	if has_active_peer():
-		print("Closing connection...")
+		NetworkLogger.printl("Closing connection...")
 		if get_tree().multiplayer.has_network_peer():
 			get_tree().multiplayer.set_network_peer(null)
 		
@@ -333,15 +333,15 @@ signal requested_server_state(p_id, p_client_message)
 signal received_server_state(p_state)
 
 master func create_server_info() -> void:
-	print("create_server_info...")
+	NetworkLogger.printl("create_server_info...")
 	emit_signal("create_server_info")
 	
 master func create_server_state() -> void:
-	print("create_server_state...")
+	NetworkLogger.printl("create_server_state...")
 	emit_signal("create_server_state")
 
 remote func peer_validation_state_error_callback() -> void:
-	print("peer_validation_state_error_callback...")
+	NetworkLogger.printl("peer_validation_state_error_callback...")
 	if is_server():
 		rpc("peer_validation_state_error_callback")
 	else:
@@ -352,7 +352,7 @@ remote func peer_validation_state_error_callback() -> void:
 	emit_signal("peer_validation_state_error_callback")
 
 func confirm_client_ready_for_sync(p_network_id : int) -> void:
-	print("confirm_client_ready_for_sync...")
+	NetworkLogger.printl("confirm_client_ready_for_sync...")
 	if peer_data[p_network_id].validation_state != network_constants_const.validation_state_enum.VALIDATION_STATE_STATE_SENT:
 		peer_validation_state_error_callback()
 	else:
@@ -362,11 +362,11 @@ func confirm_client_ready_for_sync(p_network_id : int) -> void:
 		active_peers.push_back(p_network_id)
 		
 func confirm_server_ready_for_sync() -> void:
-	print("confirm_server_ready_for_sync...")
+	NetworkLogger.printl("confirm_server_ready_for_sync...")
 	client_state = network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
 		
 func server_kick_player(p_id : int) -> void:
-	print("server_kick_player...")
+	NetworkLogger.printl("server_kick_player...")
 	if is_server():
 		var net : NetworkedMultiplayerPeer = get_tree().multiplayer.get_network_peer()
 		if net and net is NetworkedMultiplayerENet:
@@ -408,7 +408,7 @@ func decode_buffer(p_id : int, p_buffer : PoolByteArray) -> void:
 				ErrorManager.printl("Processed {command_string}: {command_size} bytes".format(
 				 {"command_string":command_string, "command_size":str(command_size)}))
 			else:
-				ErrorManager.printl("Processed NULL")
+				NetworkLogger.printl("Processed NULL")
 			
 	network_entity_manager.scene_tree_execution_table.call_deferred("_execute_scene_tree_execution_table_unsafe")
 	
@@ -482,7 +482,7 @@ func server_send_server_state(p_network_id : int, p_server_state : Dictionary) -
 	
 func unregister_peer(p_id) -> void:
 	peer_data.erase(p_id)
-	print("peer_unregistered:{id}".format({"id":str(p_id)}))
+	NetworkLogger.printl("peer_unregistered:{id}".format({"id":str(p_id)}))
 	emit_signal("peer_unregistered", p_id)
 	emit_signal("peer_list_changed")
 	
@@ -524,7 +524,7 @@ func _ready() -> void:
 	if !Engine.is_editor_hint():
 		for current_signal in multiplayer_signal_table:
 			if get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method) != OK:
-				printerr("NetworkManager: {signal} could not be connected!".format(
+				NetworkLogger.error("NetworkManager: {signal} could not be connected!".format(
 					{"signal":str(current_signal.signal)}))
 
 		

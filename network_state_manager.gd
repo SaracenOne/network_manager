@@ -42,7 +42,7 @@ func write_entity_update_command(p_entity : entity_const, p_network_writer : net
 	var entity_state : network_writer_const = p_entity.network_identity_node.get_state(null, false)
 	var entity_state_size = entity_state.get_position()
 	if entity_state_size >= 0xffff:
-		ErrorManager.error("State data exceeds 16 bits!")
+		NetworkLogger.error("State data exceeds 16 bits!")
 		
 	p_network_writer.put_u16(entity_state_size)
 	p_network_writer.put_writer(entity_state, entity_state_size)
@@ -58,7 +58,7 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 			network_writer.put_u8(network_constants_const.UPDATE_ENTITY_COMMAND)
 			network_writer = write_entity_update_command(p_entity, network_writer)
 		_:
-			ErrorManager.error("Unknown entity message")
+			NetworkLogger.error("Unknown entity message")
 
 	return network_writer
 	
@@ -112,12 +112,12 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_update_command: eof!")
+		NetworkLogger.error("decode_entity_update_command: eof!")
 		return null
 		
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_update_command: eof!")
+		NetworkLogger.error("decode_entity_update_command: eof!")
 		return null
 	
 	var entity_state_size : int = p_network_reader.get_u16()
@@ -139,7 +139,7 @@ func decode_entity_update_command(p_packet_sender_id : int, p_network_reader : n
 				invalid_sender_id = true
 			
 		#if invalid_sender_id:
-		#	ErrorManager.error("Invalid state update sender id {packet_sender_id}!".format({"packet_sender_id":str(p_packet_sender_id)}))
+		#	NetworkLogger.error("Invalid state update sender id {packet_sender_id}!".format({"packet_sender_id":str(p_packet_sender_id)}))
 	else:
 		p_network_reader.seek(p_network_reader.get_position() + entity_state_size)
 	
@@ -168,7 +168,7 @@ func _server_peer_connected(p_id : int) -> void:
 
 func _server_peer_disconnected(p_id : int) -> void:
 	if !state_writers.erase(p_id):
-		printerr("network_state_manager: attempted disconnect invalid peer!")
+		NetworkLogger.error("network_state_manager: attempted disconnect invalid peer!")
 	
 func _reset_internal_timer() -> void:
 	time_passed = 0.0

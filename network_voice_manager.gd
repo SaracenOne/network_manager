@@ -85,7 +85,7 @@ func decode_voice_command(
 			return null
 	
 	if encoded_size != encoded_voice.size():
-		printerr("pool size mismatch!")
+		NetworkLogger.error("pool size mismatch!")
 	
 	# If you're the server, forward the packet to all the other peers
 	if !NetworkManager.is_relay() and NetworkManager.is_server():
@@ -193,7 +193,7 @@ func _server_peer_connected(p_id : int) -> void:
 
 func _server_peer_disconnected(p_id : int) -> void:
 	if !voice_writers.erase(p_id):
-		printerr("network_state_manager: attempted disconnect invalid peer!")
+		NetworkLogger.error("network_state_manager: attempted disconnect invalid peer!")
 	
 func is_command_valid(p_command : int) -> bool:
 	if p_command == network_constants_const.VOICE_COMMAND:

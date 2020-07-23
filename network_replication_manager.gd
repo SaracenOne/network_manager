@@ -40,7 +40,7 @@ func _entity_added(p_entity : entity_const) -> void:
 	if NetworkManager.is_server():
 		if p_entity.network_identity_node != null:
 			if network_entities_pending_spawn.has(p_entity):
-				ErrorManager.error("Attempted to spawn two identical network entities")
+				NetworkLogger.error("Attempted to spawn two identical network entities")
 				
 			network_entities_pending_spawn.append(p_entity)
 		
@@ -142,7 +142,7 @@ func create_entity_command(p_command : int, p_entity : entity_const) -> network_
 			network_writer.put_u8(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND)
 			network_writer = write_entity_transfer_master_command(p_entity, network_writer)
 		_:
-			ErrorManager.error("Unknown entity message")
+			NetworkLogger.error("Unknown entity message")
 
 	return network_writer
 		
@@ -169,7 +169,7 @@ func get_network_scene_id_from_path(p_path : String) -> int:
 		else:
 			return network_scene_id
 		
-	ErrorManager.error("Could not find network scene id for {path}".format({"path":path}))
+	NetworkLogger.error("Could not find network scene id for {path}".format({"path":path}))
 	return -1
 	
 func create_spawn_state_for_new_client(p_network_id : int) -> void:
@@ -187,18 +187,18 @@ func create_spawn_state_for_new_client(p_network_id : int) -> void:
 	
 	network_writer_state.seek(0)
 	
-	print("Spawn state = [")
+	NetworkLogger.printl("Spawn state = [")
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
-			print("{ %s }" % entity.get_name())
-	print("] for %s" % str(p_network_id))
+			NetworkLogger.printl("{ %s }" % entity.get_name())
+	NetworkLogger.printl("] for %s" % str(p_network_id))
 	
 	for entity in entities:
 		if entity.is_inside_tree() and not network_entities_pending_spawn.has(entity):
 			var entity_command_network_writer : network_writer_const = create_entity_command(network_constants_const.SPAWN_ENTITY_COMMAND, entity)
 			network_writer_state.put_writer(entity_command_network_writer, entity_command_network_writer.get_position())
 			
-	print("Spawn state size: %s" % str(network_writer_state.get_position()))
+	NetworkLogger.printl("Spawn state size: %s" % str(network_writer_state.get_position()))
 		
 	emit_signal("spawn_state_for_new_client_ready", p_network_id, network_writer_state)
 	
@@ -216,16 +216,16 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 			
 			# Debugging information
 			if network_entities_pending_spawn.size():
-				print("Spawning entities = [")
+				NetworkLogger.printl("Spawning entities = [")
 				for entity in network_entities_pending_spawn:
-					print("{ %s }" % entity.get_name())
-				print("]")
+					NetworkLogger.printl("{ %s }" % entity.get_name())
+				NetworkLogger.printl("]")
 				
 			if network_entities_pending_destruction.size():
-				print("Destroying entities = [")
+				NetworkLogger.printl("Destroying entities = [")
 				for entity in network_entities_pending_destruction:
-					print("{ %s }" % entity.get_name())
-				print("]")
+					NetworkLogger.printl("{ %s }" % entity.get_name())
+				NetworkLogger.printl("]")
 			# Debugging end
 			
 			var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
@@ -296,46 +296,46 @@ func decode_entity_spawn_command(p_packet_sender_id : int, p_network_reader : ne
 		valid_sender_id = true
 	
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_spawn_command: eof!")
+		NetworkLogger.error("decode_entity_spawn_command: eof!")
 		return null
 		
 	var scene_id : int = network_entity_manager.read_entity_scene_id(p_network_reader, network_entity_manager.networked_scenes)
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_spawn_command: eof!")
+		NetworkLogger.error("decode_entity_spawn_command: eof!")
 		return null
 		
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if instance_id <= network_entity_manager.NULL_NETWORK_INSTANCE_ID:
-		ErrorManager.error("decode_entity_spawn_command: eof!")
+		NetworkLogger.error("decode_entity_spawn_command: eof!")
 		return null
 		
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_spawn_command: eof!")
+		NetworkLogger.error("decode_entity_spawn_command: eof!")
 		return null
 		
 	var network_master : int = network_entity_manager.read_entity_network_master(p_network_reader)
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_spawn_command: eof!")
+		NetworkLogger.error("decode_entity_spawn_command: eof!")
 		return null
 	
 	# If this was not from a valid send, return null
 	if !valid_sender_id:
-		ErrorManager.error("decode_entity_spawn_command: received spawn command from non server ID!")
+		NetworkLogger.error("decode_entity_spawn_command: received spawn command from non server ID!")
 		return null
 	
 	var scene_path : String = get_scene_path_for_scene_id(scene_id)
 	if scene_path == "":
-		ErrorManager.error("decode_entity_spawn_command: received invalid scene id {scene_id}!".format({"scene_id":scene_id}))
+		NetworkLogger.error("decode_entity_spawn_command: received invalid scene id {scene_id}!".format({"scene_id":scene_id}))
 		return null
 	
 	var packed_scene : PackedScene = get_packed_scene_for_path(scene_path)
 	if packed_scene == null:
-		ErrorManager.error("decode_entity_spawn_command: received invalid packed_scene for path {scene_path}!".format({"scene_path":scene_path}))
+		NetworkLogger.error("decode_entity_spawn_command: received invalid packed_scene for path {scene_path}!".format({"scene_path":scene_path}))
 		return null
 		
 	var entity_instance : entity_const = packed_scene.instance()
 	if entity_instance == null:
-		ErrorManager.error("decode_entity_spawn_command: null instance!")
+		NetworkLogger.error("decode_entity_spawn_command: null instance!")
 		return null
 	
 	entity_instance._threaded_instance_setup(instance_id, p_network_reader)
@@ -357,24 +357,24 @@ func decode_entity_destroy_command(p_packet_sender_id : int, p_network_reader : 
 		valid_sender_id = true	
 	
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_destroy_command: eof!")
+		NetworkLogger.error("decode_entity_destroy_command: eof!")
 		return null
 		
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_destroy_command: eof!")
+		NetworkLogger.error("decode_entity_destroy_command: eof!")
 		return null
 		
 	# If this was not from a valid send, return null
 	if !valid_sender_id:
-		ErrorManager.error("decode_entity_destroy_command: received destroy command from non server ID!")
+		NetworkLogger.error("decode_entity_destroy_command: received destroy command from non server ID!")
 		return null
 	
 	if network_entity_manager.network_instance_ids.has(instance_id):
 		var entity_instance : Node = network_entity_manager.network_instance_ids[instance_id].get_entity_node()
 		NetworkManager.network_entity_manager.scene_tree_execution_command(NetworkManager.network_entity_manager.scene_tree_execution_table_const.REMOVE_ENTITY, entity_instance, null)
 	else:
-		ErrorManager.error("Attempted to destroy invalid node")
+		NetworkLogger.error("Attempted to destroy invalid node")
 	
 	return p_network_reader
 
@@ -388,17 +388,17 @@ func decode_entity_request_master_command(p_packet_sender_id : int, p_network_re
 		valid_sender_id = true
 		
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_request_master_command: eof!")
+		NetworkLogger.error("decode_entity_request_master_command: eof!")
 		return null
 		
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if instance_id <= network_entity_manager.NULL_NETWORK_INSTANCE_ID:
-		ErrorManager.error("decode_entity_request_master_command: eof!")
+		NetworkLogger.error("decode_entity_request_master_command: eof!")
 		return null
 	
 	# If this was not from a valid send, return null
 	if !valid_sender_id:
-		ErrorManager.error("decode_entity_request_master_command: request master command sent directly to client!")
+		NetworkLogger.error("decode_entity_request_master_command: request master command sent directly to client!")
 		return null
 	
 	if network_entity_manager.network_instance_ids.has(instance_id):
@@ -411,7 +411,7 @@ func decode_entity_request_master_command(p_packet_sender_id : int, p_network_re
 			# to the requesting client)
 			_entity_request_transfer_master(entity_instance)
 	else:
-		ErrorManager.error("Attempted to request master of invalid node")
+		NetworkLogger.error("Attempted to request master of invalid node")
 	
 	return p_network_reader
 	
@@ -426,26 +426,26 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 		valid_sender_id = true
 		
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_transfer_master_command: eof!")
+		NetworkLogger.error("decode_entity_transfer_master_command: eof!")
 		return null
 		
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if instance_id <= network_entity_manager.NULL_NETWORK_INSTANCE_ID:
-		ErrorManager.error("decode_entity_transfer_master_command: eof!")
+		NetworkLogger.error("decode_entity_transfer_master_command: eof!")
 		return null
 		
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_transfer_master_command: eof!")
+		NetworkLogger.error("decode_entity_transfer_master_command: eof!")
 		return null
 		
 	var new_network_master : int = network_entity_manager.read_entity_network_master(p_network_reader)
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_transfer_master_command: eof!")
+		NetworkLogger.error("decode_entity_transfer_master_command: eof!")
 		return null
 		
 	# If this was not from a valid send, return null
 	if !valid_sender_id:
-		ErrorManager.error("decode_entity_transfer_master_command: received transfer master command from non server ID!")
+		NetworkLogger.error("decode_entity_transfer_master_command: received transfer master command from non server ID!")
 		return null
 	
 	if network_entity_manager.network_instance_ids.has(instance_id):
@@ -453,7 +453,7 @@ func decode_entity_transfer_master_command(p_packet_sender_id : int, p_network_r
 		if entity_instance.can_transfer_master_from_session_master(new_network_master):
 			entity_instance.process_master_request(new_network_master)
 	else:
-		ErrorManager.error("Attempted to transfer master of invalid node")
+		NetworkLogger.error("Attempted to transfer master of invalid node")
 	
 	return p_network_reader
 
@@ -469,7 +469,7 @@ func decode_replication_buffer(p_packet_sender_id : int, p_network_reader : netw
 		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
 			p_network_reader = decode_entity_transfer_master_command(p_packet_sender_id, p_network_reader)
 		_:
-			ErrorManager.error("Unknown Entity replication command")
+			NetworkLogger.error("Unknown Entity replication command")
 	
 	return p_network_reader
 	
@@ -505,7 +505,7 @@ func _server_peer_connected(p_id : int) -> void:
 
 func _server_peer_disconnected(p_id : int) -> void:
 	if !replication_writers.erase(p_id):
-		printerr("network_replication_manager: attempted disconnect invalid peer!")
+		NetworkLogger.error("network_replication_manager: attempted disconnect invalid peer!")
 	
 func is_command_valid(p_command : int) -> bool:
 	if p_command == network_constants_const.SPAWN_ENTITY_COMMAND or \

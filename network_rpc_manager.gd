@@ -76,7 +76,7 @@ func create_rpc_command(p_command : int, p_rpc_call : Dictionary) -> network_wri
 			network_writer.put_u8(network_constants_const.ENTITY_RSET_COMMAND)
 			network_writer = write_entity_rset_command(p_rpc_call, network_writer)
 		_:
-			ErrorManager.error("Unknown entity message")
+			NetworkLogger.error("Unknown entity message")
 
 	return network_writer
 		
@@ -147,12 +147,12 @@ func decode_entity_rpc_command(p_packet_sender_id : int, p_network_reader : netw
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_rpc_command: eof!")
+		NetworkLogger.error("decode_entity_rpc_command: eof!")
 		return null
 	
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if instance_id <= network_entity_manager.NULL_NETWORK_INSTANCE_ID:
-		ErrorManager.error("decode_entity_rpc_command: eof!")
+		NetworkLogger.error("decode_entity_rpc_command: eof!")
 		return null
 		
 	if network_entity_manager.network_instance_ids.has(instance_id):
@@ -161,13 +161,13 @@ func decode_entity_rpc_command(p_packet_sender_id : int, p_network_reader : netw
 			var method_id : int = p_network_reader.get_16()
 			
 			if p_network_reader.is_eof():
-				ErrorManager.error("decode_entity_rpc_command: eof!")
+				NetworkLogger.error("decode_entity_rpc_command: eof!")
 				return null
 				
 			var arg_count : int = p_network_reader.get_8()
 			
 			if p_network_reader.is_eof():
-				ErrorManager.error("decode_entity_rpc_command: eof!")
+				NetworkLogger.error("decode_entity_rpc_command: eof!")
 				return null
 				
 			var args : Array = []
@@ -175,7 +175,7 @@ func decode_entity_rpc_command(p_packet_sender_id : int, p_network_reader : netw
 				var arg = p_network_reader.get_var()
 				
 				if p_network_reader.is_eof():
-					ErrorManager.error("decode_entity_rpc_command: eof!")
+					NetworkLogger.error("decode_entity_rpc_command: eof!")
 					return null
 					
 				args.push_back(arg)
@@ -190,12 +190,12 @@ func decode_entity_rset_command(p_packet_sender_id : int, p_network_reader : net
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 	
 	if p_network_reader.is_eof():
-		ErrorManager.error("decode_entity_rpc_command: eof!")
+		NetworkLogger.error("decode_entity_rpc_command: eof!")
 		return null
 	
 	var instance_id : int = network_entity_manager.read_entity_instance_id(p_network_reader)
 	if instance_id <= network_entity_manager.NULL_NETWORK_INSTANCE_ID:
-		ErrorManager.error("decode_entity_rpc_command: eof!")
+		NetworkLogger.error("decode_entity_rpc_command: eof!")
 		return null
 		
 	if network_entity_manager.network_instance_ids.has(instance_id):
@@ -204,13 +204,13 @@ func decode_entity_rset_command(p_packet_sender_id : int, p_network_reader : net
 			var property_id : int = p_network_reader.get_16()
 			
 			if p_network_reader.is_eof():
-				ErrorManager.error("decode_entity_rpc_command: eof!")
+				NetworkLogger.error("decode_entity_rpc_command: eof!")
 				return null
 				
 			var value = p_network_reader.get_var()
 				
 			if p_network_reader.is_eof():
-				ErrorManager.error("decode_entity_rpc_command: eof!")
+				NetworkLogger.error("decode_entity_rpc_command: eof!")
 				return null
 				
 			var rpc_table : Node = entity_instance.get_rpc_table()
@@ -226,7 +226,7 @@ func decode_rpc_buffer(p_packet_sender_id : int, p_network_reader : network_read
 		network_constants_const.ENTITY_RSET_COMMAND:
 			p_network_reader = decode_entity_rset_command(p_packet_sender_id, p_network_reader)
 		_:
-			ErrorManager.error("Unknown Entity replication command")
+			NetworkLogger.error("Unknown Entity replication command")
 	
 	return p_network_reader
 	
@@ -251,9 +251,9 @@ func _server_peer_connected(p_id : int) -> void:
 
 func _server_peer_disconnected(p_id : int) -> void:
 	if !rpc_reliable_writers.erase(p_id):
-		printerr("network_rpc_manager: attempted disconnect invalid peer!")
+		NetworkLogger.error("network_rpc_manager: attempted disconnect invalid peer!")
 	if !rpc_unreliable_writers.erase(p_id):
-		printerr("network_rpc_manager: attempted disconnect invalid peer!")
+		NetworkLogger.error("network_rpc_manager: attempted disconnect invalid peer!")
 	
 func is_command_valid(p_command : int) -> bool:
 	if p_command == network_constants_const.ENTITY_RPC_COMMAND or \
