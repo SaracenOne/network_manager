@@ -10,7 +10,7 @@ const SERVER_MASTER_PEER_ID : int = 1
 const PEER_PENDING_TIMEOUT : int = 20
 
 enum validation_state_enum {
-	VALIDATION_STATE_NONE,
+	VALIDATION_STATE_NONE = 0,
 	VALIDATION_STATE_CONNECTION,
 	VALIDATION_STATE_PEERS_SENT,
 	VALIDATION_STATE_INFO_SENT,
@@ -36,29 +36,27 @@ enum {
 	SESSION_MASTER_COMMAND
 }
 
-enum {
-	
+
+const COMMAND_STRING_TABLE : Dictionary = {
+	UPDATE_ENTITY_COMMAND:"UpdateEntityCommand",
+	SPAWN_ENTITY_COMMAND:"SpawnEntityCommand",
+	DESTROY_ENTITY_COMMAND:"DestroyEntityCommand",
+	REQUEST_ENTITY_MASTER_COMMAND:"RequestEntityMasterCommand",
+	TRANSFER_ENTITY_MASTER_COMMAND:"TransferEntityMasterCommand",
+	ENTITY_RPC_COMMAND:"EntityRPCCommand",
+	ENTITY_RSET_COMMAND:"EntityRSetCommand",
+	VOICE_COMMAND:"VoiceCommand",
+	INFO_REQUEST_COMMAND:"InfoRequestCommand",
+	STATE_REQUEST_COMMAND:"StateRequestCommand",
+	READY_COMMAND:"ReadyCommand",
+	MAP_CHANGING_COMMAND:"MapChangingCommand",
+	SESSION_MASTER_COMMAND:"SessionMasterCommand"
 }
 
 # Returns a string name for a corresponding network command
 static func get_string_for_command(p_id : int) -> String:
-	var command_string_table : Dictionary = {
-		UPDATE_ENTITY_COMMAND:"UpdateEntityCommand",
-		SPAWN_ENTITY_COMMAND:"SpawnEntityCommand",
-		DESTROY_ENTITY_COMMAND:"DestroyEntityCommand",
-		REQUEST_ENTITY_MASTER_COMMAND:"RequestEntityMasterCommand",
-		TRANSFER_ENTITY_MASTER_COMMAND:"TransferEntityMasterCommand",
-		ENTITY_RPC_COMMAND:"EntityRPCCommand",
-		ENTITY_RSET_COMMAND:"EntityRSetCommand",
-		VOICE_COMMAND:"VoiceCommand",
-		INFO_REQUEST_COMMAND:"InfoRequestCommand",
-		STATE_REQUEST_COMMAND:"StateRequestCommand",
-		READY_COMMAND:"ReadyCommand",
-		MAP_CHANGING_COMMAND:"MapChangingCommand",
-		SESSION_MASTER_COMMAND:"SessionMasterCommand"
-	}
 	
-	if command_string_table.has(p_id):
-		return command_string_table[p_id]
+	if COMMAND_STRING_TABLE.has(p_id):
+		return COMMAND_STRING_TABLE[p_id]
 			
 	return ""
