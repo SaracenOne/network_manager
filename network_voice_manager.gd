@@ -1,7 +1,7 @@
 extends Node
 tool
 
-var get_speech_buffers : FuncRef = FuncRef.new()
+var copy_and_clear_buffers : FuncRef = FuncRef.new()
 var get_send_id : FuncRef = FuncRef.new()
 var set_send_id : FuncRef = FuncRef.new()
 var is_muted : FuncRef = FuncRef.new()
@@ -38,17 +38,18 @@ func encode_voice_packet(
 	p_packet_sender_id : int,
 	p_network_writer : network_writer_const,
 	p_index : int,
-	p_voice_buffer : PoolByteArray,
+	p_voice_buffer : Dictionary,
 	p_encode_id : bool) -> network_writer_const:
 		
-	var voice_buffer_size : int = p_voice_buffer.size()
+	var voice_buffer_size : int = p_voice_buffer["buffer_size"]
 	
 	if p_encode_id:
 		p_network_writer.put_u32(p_packet_sender_id)
 	p_network_writer.put_u24(p_index)
 	p_network_writer.put_u16(voice_buffer_size)
 	if voice_buffer_size > 0:
-		p_network_writer.put_data(p_voice_buffer)
+		p_network_writer.put_ranged_data(\
+		p_voice_buffer["byte_array"], 0, voice_buffer_size)
 	
 	return p_network_writer
 	
@@ -57,7 +58,7 @@ func decode_voice_command(
 	p_network_reader : network_reader_const
 	) -> network_reader_const:
 		
-	var encoded_voice : PoolByteArray = PoolByteArray()
+	var encoded_voice_byte_array : PoolByteArray = PoolByteArray()
 	var encoded_index : int = -1
 	var encoded_size : int = -1
 	var sender_id : int = -1
@@ -80,11 +81,11 @@ func decode_voice_command(
 		return null
 	
 	if encoded_size > 0:
-		encoded_voice = p_network_reader.get_buffer(encoded_size)
+		encoded_voice_byte_array = p_network_reader.get_buffer(encoded_size)
 		if p_network_reader.is_eof():
 			return null
 	
-	if encoded_size != encoded_voice.size():
+	if encoded_size != encoded_voice_byte_array.size():
 		NetworkLogger.error("pool size mismatch!")
 	
 	# If you're the server, forward the packet to all the other peers
@@ -101,6 +102,10 @@ func decode_voice_command(
 				
 				network_writer_state.seek(0)
 				
+				var encoded_voice : Dictionary = Dictionary()
+				encoded_voice["byte_array"] = encoded_voice_byte_array
+				encoded_voice["buffer_size"] = encoded_voice_byte_array.size()
+				
 				# Voice commands
 				network_writer_state = encode_voice_buffer(sender_id,
 				network_writer_state,
@@ -113,7 +118,7 @@ func decode_voice_command(
 					NetworkManager.network_flow_manager.queue_packet_for_send(ref_pool_const.new(raw_data), synced_peer, NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE)
 	
 	if !NetworkManager.server_dedicated:
-		NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice)
+		NetworkManager.emit_signal("voice_packet_compressed", sender_id, encoded_index, encoded_voice_byte_array)
 	
 	return p_network_reader
 		
@@ -121,15 +126,15 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
 		
-		if get_speech_buffers.is_valid():
-			var voice_buffers : Array = get_speech_buffers.call_func()
+		if copy_and_clear_buffers.is_valid():
+			var voice_buffers : Array = copy_and_clear_buffers.call_func()
 			for voice_buffer in voice_buffers:
 				# If muted, give it an empty array
 				if !is_muted.is_valid():
-					voice_buffer = PoolByteArray()
+					voice_buffer = {"byte_array":PoolByteArray(), "buffer_size":0}
 				else:
 					if is_muted.call_func():
-						voice_buffer = PoolByteArray()
+						voice_buffer = {"byte_array":PoolByteArray(), "buffer_size":0}
 				
 				var send_id : int
 				
@@ -161,7 +166,7 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 func encode_voice_buffer(p_packet_sender_id : int,
 	p_network_writer : network_writer_const,
 	p_index : int,
-	p_voice_buffer : PoolByteArray,
+	p_voice_buffer : Dictionary,
 	p_encode_id : bool) -> network_writer_const:
 	
 	p_network_writer.put_u8(network_constants_const.VOICE_COMMAND)

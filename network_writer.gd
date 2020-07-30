@@ -33,6 +33,11 @@ func seek(p_position : int) -> void:
 func put_data(p_data : PoolByteArray) -> void:
 	if stream_peer_buffer.put_data(p_data) != OK:
 		NetworkLogger.error("put_data returned an error!")
+		
+func put_ranged_data(p_data : PoolByteArray, p_position : int, p_length : int) -> void:
+	var subarray : PoolByteArray = p_data.subarray(p_position, p_position + p_length-1)
+	if stream_peer_buffer.put_data(subarray) != OK:
+		NetworkLogger.error("put_ranged_data returned an error!")
 
 func put_writer(p_writer, p_size : int = 0) -> void:
 	if p_writer.get_size() == p_size or p_size <= 0:
