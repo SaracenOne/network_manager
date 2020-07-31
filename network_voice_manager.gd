@@ -1,10 +1,10 @@
 extends Node
 tool
 
-var copy_and_clear_buffers : FuncRef = FuncRef.new()
+var get_voice_buffers : FuncRef = FuncRef.new()
 var get_send_id : FuncRef = FuncRef.new()
 var set_send_id : FuncRef = FuncRef.new()
-var is_muted : FuncRef = FuncRef.new()
+var should_send_audio : FuncRef = FuncRef.new()
 
 const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
 
@@ -126,14 +126,14 @@ func _network_manager_process(p_id : int, p_delta : float) -> void:
 	if p_delta > 0.0:
 		var synced_peers : Array = NetworkManager.copy_valid_send_peers(p_id, false)
 		
-		if copy_and_clear_buffers.is_valid():
-			var voice_buffers : Array = copy_and_clear_buffers.call_func()
+		if get_voice_buffers.is_valid():
+			var voice_buffers : Array = get_voice_buffers.call_func()
 			for voice_buffer in voice_buffers:
-				# If muted, give it an empty array
-				if !is_muted.is_valid():
+				# If muted or gated, give it an empty array
+				if !should_send_audio.is_valid():
 					voice_buffer = {"byte_array":PoolByteArray(), "buffer_size":0}
 				else:
-					if is_muted.call_func():
+					if !should_send_audio.call_func():
 						voice_buffer = {"byte_array":PoolByteArray(), "buffer_size":0}
 				
 				var send_id : int
