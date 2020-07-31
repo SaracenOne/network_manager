@@ -27,7 +27,7 @@ static func decode_attachment_id(p_reader : network_reader_const) -> int:
 
 static func write_entity_parent_id(p_writer : network_writer_const, p_entity : Node) -> network_writer_const:
 	if p_entity.entity_parent:
-		encode_parent_id(p_writer, p_entity.entity_parent.get_network_identity_node().network_instance_id)
+		encode_parent_id(p_writer, p_entity.entity_parent.network_identity_node.network_instance_id)
 	else:
 		p_writer.put_u32(NetworkManager.network_entity_manager.NULL_NETWORK_INSTANCE_ID)
 		
