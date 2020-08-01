@@ -169,6 +169,19 @@ func set_relay(p_is_relay : bool) -> void:
 func is_rpc_sender_id_server() -> bool:
 	return get_tree().multiplayer.get_rpc_sender_id() == network_constants_const.SERVER_MASTER_PEER_ID
 
+# Returns the number of connected (not just active) peers
+# The inclusive argument means the host should be included in this count
+func get_peer_count(p_inclusive : bool) -> int:
+	var peer_count : int = peer_data.size()
+	if p_inclusive:
+		if is_server():
+			if !server_dedicated:
+				peer_count += 1
+		else:
+			peer_count += 1
+			
+	return peer_count
+
 func host_game(p_port : int, p_max_players : int, p_dedicated : bool, p_relay : bool = true) -> bool:
 	if has_active_peer():
 		NetworkLogger.error("Network peer already established!")
