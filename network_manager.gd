@@ -100,9 +100,7 @@ func server_peer_ready(p_network_id : int) -> void:
 	attempt_to_reassign_session_master()
 
 func _network_peer_connected(p_id : int) -> void:
-	peer_data[p_id] = {\
-	"validation_state":network_constants_const.validation_state_enum.VALIDATION_STATE_NONE,\
-	"time_since_last_update":0.0}
+	register_peer(p_id)
 	
 	NetworkLogger.printl("Network peer {id} connected!".format({"id":str(p_id)}))
 	if !is_relay():
@@ -479,6 +477,15 @@ func server_send_server_info(p_network_id : int, p_server_info : Dictionary) -> 
 	
 func server_send_server_state(p_network_id : int, p_server_state : Dictionary) -> void:
 	network_handshake_manager.rpc_id(p_network_id, "received_server_state", p_server_state)
+	
+func register_peer(p_id) -> void:
+	peer_data[p_id] = {\
+	"validation_state":network_constants_const.validation_state_enum.VALIDATION_STATE_NONE,\
+	"time_since_last_update":0.0}
+	
+	NetworkLogger.printl("peer_registered:{id}".format({"id":str(p_id)}))
+	emit_signal("peer_registered", p_id)
+	emit_signal("peer_list_changed")
 	
 func unregister_peer(p_id) -> void:
 	peer_data.erase(p_id)
