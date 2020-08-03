@@ -72,9 +72,9 @@ puppet func received_server_info(p_server_info : Dictionary) -> void:
 	NetworkLogger.printl("received_server_info...")
 	
 	if p_server_info.has("server_type"):
-		var server_type = p_server_info.server_type
+		var server_type = p_server_info["server_type"]
 		if server_type is String:
-			match p_server_info.server_type:
+			match p_server_info["server_type"]:
 				NetworkManager.network_constants_const.RELAY_SERVER_NAME:
 					NetworkLogger.printl("Connected to a relay server...")
 					NetworkManager.set_relay(true)
@@ -97,8 +97,8 @@ master func requested_server_state(p_client_info: Dictionary) -> void:
 	NetworkLogger.printl("requested_server_state...")
 	var rpc_sender_id : int = get_tree().multiplayer.get_rpc_sender_id()
 	
-	NetworkManager.peer_data[rpc_sender_id].validation_state = NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_STATE_SENT
-	NetworkManager.peer_data[rpc_sender_id].time_since_last_update = 0.0
+	NetworkManager.peer_data[rpc_sender_id]["validation_state"] = NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_STATE_SENT
+	NetworkManager.peer_data[rpc_sender_id]["time_since_last_update"] = 0.0
 	NetworkManager.emit_signal("requested_server_state", rpc_sender_id, p_client_info)
 		
 puppet func received_server_state(p_server_state : Dictionary) -> void:

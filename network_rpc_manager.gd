@@ -47,10 +47,10 @@ func get_entity_root_node() -> Node:
 func write_entity_rpc_command(p_call : Dictionary, p_network_writer : network_writer_const) -> network_writer_const:
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 
-	p_network_writer = network_entity_manager.write_entity_instance_id(p_call.entity, p_network_writer)
-	p_network_writer.put_16(p_call.method_id)
-	p_network_writer.put_8(p_call.args.size())
-	for arg in p_call.args:
+	p_network_writer = network_entity_manager.write_entity_instance_id(p_call["entity"], p_network_writer)
+	p_network_writer.put_16(p_call["method_id"])
+	p_network_writer.put_8(p_call["args"].size())
+	for arg in p_call["args"]:
 		p_network_writer.put_var(arg)
 
 	return p_network_writer
@@ -59,8 +59,8 @@ func write_entity_rset_command(p_call : Dictionary, p_network_writer : network_w
 	var network_entity_manager : Node = NetworkManager.network_entity_manager
 
 	p_network_writer = network_entity_manager.write_entity_instance_id(p_call.entity, p_network_writer)
-	p_network_writer.put_16(p_call.method_id)
-	p_network_writer.put_var(p_call.value)
+	p_network_writer.put_16(p_call["method_id"])
+	p_network_writer.put_var(p_call["value"])
 
 	return p_network_writer
 	
