@@ -8,7 +8,7 @@ const mutex_lock_const = preload("res://addons/gdutil/mutex_lock.gd")
 #
 enum {
 	ADD_ENTITY = 0,
-	REMOVE_ENTITY
+	REMOVE_ENTITY,
 }
 var scene_tree_execution_table : Array = []
 var _scene_tree_table_mutex : Mutex = Mutex.new()
