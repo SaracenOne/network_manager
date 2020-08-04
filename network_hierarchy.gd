@@ -1,9 +1,7 @@
 extends NetworkLogic
 class_name NetworkHierarchy
 
-const network_entity_manager_const = preload(
-	"res://addons/network_manager/network_entity_manager.gd"
-)
+const network_entity_manager_const = preload("res://addons/network_manager/network_entity_manager.gd")
 
 var parent_id: int = network_entity_manager_const.NULL_NETWORK_INSTANCE_ID
 var attachment_id: int = 0
