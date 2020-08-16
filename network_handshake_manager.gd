@@ -76,7 +76,9 @@ master func requested_server_info(p_client_info: Dictionary) -> void:
 
 	NetworkManager.peer_data[rpc_sender_id].validation_state = NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_INFO_SENT
 	NetworkManager.peer_data[rpc_sender_id].time_since_last_update = 0.0
-	NetworkManager.emit_signal("requested_server_info", rpc_sender_id, p_client_info)
+	
+	NetworkManager.emit_signal("received_client_info", rpc_sender_id, p_client_info)
+	NetworkManager.emit_signal("requested_server_info", rpc_sender_id)
 
 # Called by the server 
 puppet func received_server_info(p_server_info: Dictionary) -> void:
@@ -102,6 +104,10 @@ puppet func received_server_info(p_server_info: Dictionary) -> void:
 			NetworkLogger.error("Server type is not a string")
 
 	NetworkManager.request_network_kill()
+	
+puppet func received_client_info(p_client: int, p_client_info: Dictionary) -> void:
+	NetworkLogger.printl("received_client_info...")
+	NetworkManager.emit_signal("received_client_info", p_client, p_client_info)
 
 # Called by client after the basic scene state for the client has been loaded and set up
 master func requested_server_state(p_client_info: Dictionary) -> void:

@@ -39,14 +39,7 @@ var network_handshake_manager: Node = null
 
 var compression_mode: int = NetworkedMultiplayerENet.COMPRESS_NONE
 
-# Client
-var join_ip: String = network_constants_const.LOCALHOST_IP
-var join_port: int = 7777
-
 var received_packet_buffer_count: Dictionary = {}
-
-# Server
-var host_port: int = 7777  # Configuration
 
 var entity_root_node_path: NodePath = NodePath()
 var server_dedicated: bool = false
@@ -59,6 +52,8 @@ var max_players: int = -1
 var peer_data: Dictionary = {}
 
 # Shared
+var default_port: int = network_constants_const.DEFAULT_PORT
+
 var active_port: int = -1
 var active_ip: String = ""
 
@@ -93,6 +88,8 @@ signal network_peer_packet
 signal connection_killed
 
 signal voice_packet_compressed(p_id, p_index, p_buffer)
+
+signal peer_became_active(p_network_id)
 
 
 #Server
@@ -217,10 +214,7 @@ func host_game(p_port: int, p_max_players: int, p_dedicated: bool, p_relay: bool
 	server_dedicated = p_dedicated
 	max_players = p_max_players
 
-	if p_port >= 0:
-		active_port = p_port
-	else:
-		active_port = host_port
+	active_port = p_port
 	active_ip = network_constants_const.LOCALHOST_IP
 
 	var net: NetworkedMultiplayerENet = NetworkedMultiplayerENet.new()
@@ -380,6 +374,8 @@ signal received_server_info(p_info)
 signal requested_server_state(p_id, p_client_message)
 signal received_server_state(p_state)
 
+signal received_client_info(p_id, p_info)
+
 master func create_server_info() -> void:
 	NetworkLogger.printl("create_server_info...")
 	emit_signal("create_server_info")
@@ -412,6 +408,8 @@ func confirm_client_ready_for_sync(p_network_id: int) -> void:
 		peer_data[p_network_id].validation_state = network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
 
 		active_peers.push_back(p_network_id)
+		
+	emit_signal("peer_became_active", p_network_id)
 
 
 func confirm_server_ready_for_sync() -> void:
@@ -571,6 +569,8 @@ func server_send_server_info(p_network_id: int, p_server_info: Dictionary) -> vo
 func server_send_server_state(p_network_id: int, p_server_state: Dictionary) -> void:
 	network_handshake_manager.rpc_id(p_network_id, "received_server_state", p_server_state)
 
+func server_send_client_info(p_network_id: int, p_client_id: int, p_client_info: Dictionary) -> void:
+	network_handshake_manager.rpc_id(p_network_id, "received_client_info", p_client_id, p_client_info)
 
 func register_peer(p_id) -> void:
 	peer_data[p_id] = {
@@ -584,48 +584,55 @@ func register_peer(p_id) -> void:
 
 
 func unregister_peer(p_id) -> void:
+	if active_peers.has(p_id):
+		active_peers.erase(p_id)
+	
 	peer_data.erase(p_id)
 	NetworkLogger.printl("peer_unregistered:{id}".format({"id": str(p_id)}))
 	emit_signal("peer_unregistered", p_id)
 	emit_signal("peer_list_changed")
 
-
-func _ready() -> void:
+func setup_project_settings() -> void:
+	var should_save: bool = false
+	
 	if ProjectSettings.has_setting("network/config/entity_root_node"):
 		entity_root_node_path = NodePath(
 			ProjectSettings.get_setting("network/config/entity_root_node")
 		)
 	else:
 		ProjectSettings.set_setting("network/config/entity_root_node", entity_root_node_path)
-
-	if ProjectSettings.has_setting("network/config/join_ip"):
-		join_ip = ProjectSettings.get_setting("network/config/join_ip")
-	else:
-		ProjectSettings.set_setting("network/config/join_ip", join_ip)
-
-	if ProjectSettings.has_setting("network/config/join_port"):
-		join_port = ProjectSettings.get_setting("network/config/join_port")
-	else:
-		ProjectSettings.set_setting("network/config/join_port", join_port)
-
-	if ProjectSettings.has_setting("network/config/host_port"):
-		host_port = ProjectSettings.get_setting("network/config/host_port")
-	else:
-		ProjectSettings.set_setting("network/config/host_port", host_port)
+		should_save = true
 
 	if ! ProjectSettings.has_setting("network/config/compression_mode"):
 		ProjectSettings.set_setting("network/config/compression_mode", compression_mode)
+		
+		var compression_mode_property_info: Dictionary = {
+			"name": "network/config/compression_mode",
+			"type": TYPE_INT,
+			"hint": PROPERTY_HINT_ENUM,
+			"hint_string": "None,Range Coder,FastLZ,zlib,Zstandard"
+		}
+	
+		ProjectSettings.add_property_info(compression_mode_property_info)
 	else:
 		compression_mode = ProjectSettings.get_setting("network/config/compression_mode")
+		should_save = true
+		
+	if ! ProjectSettings.has_setting("network/config/default_port"):
+		ProjectSettings.set_setting("network/config/default_port", default_port)
+	else:
+		default_port = ProjectSettings.get_setting("network/config/default_port")
+		should_save = true
+	
+	if Engine.is_editor_hint() and should_save:
+		ProjectSettings.save()
 
-	var compression_mode_property_info: Dictionary = {
-		"name": "network/config/compression_mode",
-		"type": TYPE_INT,
-		"hint": PROPERTY_HINT_ENUM,
-		"hint_string": "None,Range Coder,FastLZ,zlib,Zstandard"
-	}
+########
+# Node #
+########
 
-	ProjectSettings.add_property_info(compression_mode_property_info)
+func _ready() -> void:
+	setup_project_settings()
 
 	if ! Engine.is_editor_hint():
 		for current_signal in multiplayer_signal_table:

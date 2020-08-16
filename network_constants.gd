@@ -3,6 +3,7 @@ extends Node
 const AUTHORITATIVE_SERVER_NAME = "authoritative"
 const RELAY_SERVER_NAME = "relay"
 
+const DEFAULT_PORT = 7777
 const LOCALHOST_IP = "127.0.0.1"
 
 const ALL_PEERS: int = 0
