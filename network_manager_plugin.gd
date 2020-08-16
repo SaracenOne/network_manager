@@ -4,6 +4,16 @@ tool
 var editor_interface: EditorInterface = null
 
 
+func _init() -> void:
+	print("Initialising NetworkManager plugin")
+
+
+func _notification(p_notification: int):
+	match p_notification:
+		NOTIFICATION_PREDELETE:
+			print("Destroying NetworkManager plugin")
+
+
 func get_name() -> String:
 	return "NetworkManager"
 
