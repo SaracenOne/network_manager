@@ -28,7 +28,7 @@ const network_entity_manager_const = preload("network_entity_manager.gd")
 const network_flow_manager_const = preload("network_flow_manager.gd")
 const network_handshake_manager_const = preload("network_handshake_manager.gd")
 
-var server_mode
+var server_state_ready: bool = false
 
 var network_replication_manager: Node = null
 var network_state_manager: Node = null
@@ -50,6 +50,10 @@ var max_players: int = -1
 ################
 # Server
 var peer_data: Dictionary = {}
+
+func received_peer_validation_state_update(p_peer_id: int, p_validation_state: int) -> void:
+	peer_data[p_peer_id]["time_since_last_update_received"] = 0.0
+	peer_data[p_peer_id]["validation_state"] = p_validation_state
 
 # Shared
 var default_port: int = network_constants_const.DEFAULT_PORT
@@ -86,6 +90,8 @@ signal server_disconnected
 signal network_peer_packet
 
 signal connection_killed
+
+signal server_state_ready
 
 signal voice_packet_compressed(p_id, p_index, p_buffer)
 
@@ -144,6 +150,9 @@ func get_entity_root_node() -> Node:
 
 #Client/Server
 func _network_peer_packet(p_id: int, p_packet: PoolByteArray) -> void:
+	# Reset the timer for this peer
+	peer_data[p_id]["time_since_last_update_received"] = 0.0
+	
 	emit_signal("network_peer_packet", p_id, p_packet)
 
 
@@ -281,6 +290,7 @@ func join_game(p_ip: String, p_port: int) -> bool:
 func reset_session_data() -> void:
 	NetworkLogger.printl("Resetting session data")
 
+	server_state_ready = false
 	peer_data = {}
 	active_port = -1
 	client_state = network_constants_const.validation_state_enum.VALIDATION_STATE_NONE
@@ -367,11 +377,14 @@ func copy_active_peers() -> Array:
 signal create_server_info
 signal create_server_state
 
+signal requesting_server_info
+signal requesting_server_state
+
 signal peer_validation_state_error_callback
 
 signal requested_server_info(p_id, p_client_message)
 signal received_server_info(p_info)
-signal requested_server_state(p_id, p_client_message)
+signal requested_server_state(p_id)
 signal received_server_state(p_state)
 
 signal received_client_info(p_id, p_info)
@@ -404,8 +417,8 @@ func confirm_client_ready_for_sync(p_network_id: int) -> void:
 	):
 		peer_validation_state_error_callback()
 	else:
-		peer_data[p_network_id].time_since_last_update = 0.0
-		peer_data[p_network_id].validation_state = network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
+		received_peer_validation_state_update(p_network_id,\
+		network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED)
 
 		active_peers.push_back(p_network_id)
 		
@@ -496,7 +509,7 @@ func _process(p_delta: float) -> void:
 		if is_server():
 			var peers: PoolIntArray = get_connected_peers()
 			for peer in peers:
-				peer_data[peer].time_since_last_update += p_delta
+				peer_data[peer]["time_since_last_update_received"] += p_delta
 
 		if has_active_peer():
 			if (
@@ -549,6 +562,7 @@ func get_network_scene_paths() -> Array:
 
 
 func client_request_server_info(p_client_info: Dictionary) -> void:
+	emit_signal("requesting_server_info")
 	network_handshake_manager.rpc_id(
 		NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID,
 		"requested_server_info",
@@ -557,6 +571,7 @@ func client_request_server_info(p_client_info: Dictionary) -> void:
 
 
 func client_request_server_state(p_client_state: Dictionary) -> void:
+	emit_signal("requesting_server_state")
 	network_handshake_manager.rpc_id(
 		NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID, "requested_server_state", {}
 	)
@@ -575,7 +590,8 @@ func server_send_client_info(p_network_id: int, p_client_id: int, p_client_info:
 func register_peer(p_id) -> void:
 	peer_data[p_id] = {
 		"validation_state": network_constants_const.validation_state_enum.VALIDATION_STATE_NONE,
-		"time_since_last_update": 0.0
+		"time_since_last_update_received": 0.0,
+		"time_since_last_update_sent": 0.0
 	}
 
 	NetworkLogger.printl("peer_registered:{id}".format({"id": str(p_id)}))
@@ -626,6 +642,10 @@ func setup_project_settings() -> void:
 	
 	if Engine.is_editor_hint() and should_save:
 		ProjectSettings.save()
+		
+func confirm_server_state_ready() -> void:
+	server_state_ready = true
+	emit_signal("server_state_ready")
 
 ########
 # Node #

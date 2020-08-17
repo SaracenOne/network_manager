@@ -8,7 +8,13 @@ const network_constants_const = preload("network_constants.gd")
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 
-var signal_table: Array = []
+var signal_table: Array = [
+	{
+		"singleton": "NetworkManager",
+		"signal": "server_state_ready",
+		"method": "_server_state_ready"
+	}
+]
 
 """
 
@@ -68,14 +74,19 @@ func session_master_command(p_id: int, p_new_master: int) -> void:
 			ref_pool_const.new(raw_data), p_id, NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE
 		)
 
+func attempt_to_send_server_state_to_peer(p_peer_id: int):
+	if NetworkManager.server_state_ready:
+		if NetworkManager.peer_data[p_peer_id]["validation_state"] == NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_AWAITING_STATE:
+			NetworkManager.peer_data[p_peer_id]["validation_state"] = NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_STATE_SENT
+			NetworkManager.emit_signal("requested_server_state", p_peer_id)
 
 # Called by the client once the server has confirmed they have been validated
 master func requested_server_info(p_client_info: Dictionary) -> void:
 	NetworkLogger.printl("requested_server_info...")
 	var rpc_sender_id: int = get_tree().multiplayer.get_rpc_sender_id()
 
-	NetworkManager.peer_data[rpc_sender_id].validation_state = NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_INFO_SENT
-	NetworkManager.peer_data[rpc_sender_id].time_since_last_update = 0.0
+	NetworkManager.received_peer_validation_state_update(rpc_sender_id,\
+	network_constants_const.validation_state_enum.VALIDATION_STATE_INFO_SENT)
 	
 	NetworkManager.emit_signal("received_client_info", rpc_sender_id, p_client_info)
 	NetworkManager.emit_signal("requested_server_info", rpc_sender_id)
@@ -114,9 +125,11 @@ master func requested_server_state(p_client_info: Dictionary) -> void:
 	NetworkLogger.printl("requested_server_state...")
 	var rpc_sender_id: int = get_tree().multiplayer.get_rpc_sender_id()
 
-	NetworkManager.peer_data[rpc_sender_id]["validation_state"] = NetworkManager.network_constants_const.validation_state_enum.VALIDATION_STATE_STATE_SENT
-	NetworkManager.peer_data[rpc_sender_id]["time_since_last_update"] = 0.0
-	NetworkManager.emit_signal("requested_server_state", rpc_sender_id, p_client_info)
+	# This peer is waiting for the server state, but we may not be able to send it yet if the server has not fully loaded, so sit tight...
+	NetworkManager.received_peer_validation_state_update(rpc_sender_id,\
+	network_constants_const.validation_state_enum.VALIDATION_STATE_AWAITING_STATE)
+	
+	attempt_to_send_server_state_to_peer(rpc_sender_id)
 
 puppet func received_server_state(p_server_state: Dictionary) -> void:
 	NetworkLogger.printl("received_server_state...")
@@ -185,6 +198,10 @@ func disconnect_peer(p_packet_sender_id: int, p_id: int) -> void:
 	if p_packet_sender_id == network_constants_const.SERVER_MASTER_PEER_ID:
 		NetworkManager.unregister_peer(p_id)
 
+func _server_state_ready() -> void:
+	var peers: Array = NetworkManager.get_connected_peers()
+	for peer in peers:
+		attempt_to_send_server_state_to_peer(peer)
 
 func _ready() -> void:
 	if ! Engine.is_editor_hint():
