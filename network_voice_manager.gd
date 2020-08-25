@@ -3,7 +3,6 @@ tool
 
 var get_voice_buffers: FuncRef = FuncRef.new()
 var get_send_id: FuncRef = FuncRef.new()
-var set_send_id: FuncRef = FuncRef.new()
 var should_send_audio: FuncRef = FuncRef.new()
 
 const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
@@ -145,8 +144,11 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 	if p_delta > 0.0:
 		var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
 
-		if get_voice_buffers.is_valid():
+		if get_voice_buffers.is_valid() and get_send_id.is_valid():
+			
+			var send_id: int = get_send_id.call_func()
 			var voice_buffers: Array = get_voice_buffers.call_func()
+			
 			for voice_buffer in voice_buffers:
 				# If muted or gated, give it an empty array
 				if ! should_send_audio.is_valid():
@@ -154,8 +156,6 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 				else:
 					if ! should_send_audio.call_func():
 						voice_buffer = {"byte_array": PoolByteArray(), "buffer_size": 0}
-
-				var send_id: int
 
 				for synced_peer in synced_peers:
 					var network_writer_state: network_writer_const = null
@@ -166,8 +166,6 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 						network_writer_state = dummy_voice_writer
 
 					network_writer_state.seek(0)
-
-					send_id = get_send_id.call_func()
 
 					# Voice commands
 					network_writer_state = encode_voice_buffer(
@@ -194,8 +192,7 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 							NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE
 						)
 				send_id += 1
-				set_send_id.call_func(send_id)
-
+				
 
 func encode_voice_buffer(
 	p_packet_sender_id: int,
