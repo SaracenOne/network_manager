@@ -93,7 +93,7 @@ signal connection_killed
 
 signal server_state_ready
 
-signal voice_packet_compressed(p_id, p_index, p_buffer)
+signal voice_packet_compressed(p_peer_id, p_sequence_id, p_buffer)
 
 signal peer_became_active(p_network_id)
 

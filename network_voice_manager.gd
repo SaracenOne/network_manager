@@ -2,7 +2,7 @@ extends Node
 tool
 
 var get_voice_buffers: FuncRef = FuncRef.new()
-var get_send_id: FuncRef = FuncRef.new()
+var get_sequence_id: FuncRef = FuncRef.new()
 var should_send_audio: FuncRef = FuncRef.new()
 
 const ref_pool_const = preload("res://addons/gdutil/ref_pool.gd")
@@ -49,7 +49,7 @@ var signal_table: Array = [
 func encode_voice_packet(
 	p_packet_sender_id: int,
 	p_network_writer: network_writer_const,
-	p_index: int,
+	p_sequence_id: int,
 	p_voice_buffer: Dictionary,
 	p_encode_id: bool
 ) -> network_writer_const:
@@ -57,7 +57,7 @@ func encode_voice_packet(
 
 	if p_encode_id:
 		p_network_writer.put_u32(p_packet_sender_id)
-	p_network_writer.put_u24(p_index)
+	p_network_writer.put_u24(p_sequence_id)
 	p_network_writer.put_u16(voice_buffer_size)
 	if voice_buffer_size > 0:
 		p_network_writer.put_ranged_data(p_voice_buffer["byte_array"], 0, voice_buffer_size)
@@ -67,7 +67,7 @@ func encode_voice_packet(
 
 func decode_voice_command(p_packet_sender_id: int, p_network_reader: network_reader_const) -> network_reader_const:
 	var encoded_voice_byte_array: PoolByteArray = PoolByteArray()
-	var encoded_index: int = -1
+	var encoded_sequence_id: int = -1
 	var encoded_size: int = -1
 	var sender_id: int = -1
 
@@ -84,7 +84,7 @@ func decode_voice_command(p_packet_sender_id: int, p_network_reader: network_rea
 	else:
 		sender_id = p_packet_sender_id
 
-	encoded_index = p_network_reader.get_u24()
+	encoded_sequence_id = p_network_reader.get_u24()
 	if p_network_reader.is_eof():
 		return null
 	encoded_size = p_network_reader.get_u16()
@@ -119,7 +119,7 @@ func decode_voice_command(p_packet_sender_id: int, p_network_reader: network_rea
 
 				# Voice commands
 				network_writer_state = encode_voice_buffer(
-					sender_id, network_writer_state, encoded_index, encoded_voice, true
+					sender_id, network_writer_state, encoded_sequence_id, encoded_voice, true
 				)
 
 				if network_writer_state.get_position() > 0:
@@ -134,7 +134,7 @@ func decode_voice_command(p_packet_sender_id: int, p_network_reader: network_rea
 
 	if ! NetworkManager.server_dedicated:
 		NetworkManager.emit_signal(
-			"voice_packet_compressed", sender_id, encoded_index, encoded_voice_byte_array
+			"voice_packet_compressed", sender_id, encoded_sequence_id, encoded_voice_byte_array
 		)
 
 	return p_network_reader
@@ -144,9 +144,9 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 	if p_delta > 0.0:
 		var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
 
-		if get_voice_buffers.is_valid() and get_send_id.is_valid():
+		if get_voice_buffers.is_valid() and get_sequence_id.is_valid():
 			
-			var send_id: int = get_send_id.call_func()
+			var sequence_id: int = get_sequence_id.call_func()
 			var voice_buffers: Array = get_voice_buffers.call_func()
 			
 			for voice_buffer in voice_buffers:
@@ -171,7 +171,7 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 					network_writer_state = encode_voice_buffer(
 						p_id,
 						network_writer_state,
-						send_id,
+						sequence_id,
 						voice_buffer,
 						(
 							! NetworkManager.is_relay()
@@ -191,7 +191,7 @@ func _network_manager_process(p_id: int, p_delta: float) -> void:
 							synced_peer,
 							NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE
 						)
-				send_id += 1
+				sequence_id += 1
 				
 
 func encode_voice_buffer(
