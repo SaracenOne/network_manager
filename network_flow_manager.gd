@@ -291,32 +291,3 @@ func _ready() -> void:
 			),
 			File.WRITE
 		)
-
-	if ProjectSettings.has_setting("network/config/simulate_network_conditions"):
-		simulate_network_conditions = ProjectSettings.get_setting(
-			"network/config/simulate_network_conditions"
-		)
-	else:
-		ProjectSettings.set_setting(
-			"network/config/simulate_network_conditions", simulate_network_conditions
-		)
-
-	if ProjectSettings.has_setting("network/config/min_latency"):
-		min_latency = ProjectSettings.get_setting("network/config/min_latency")
-	else:
-		ProjectSettings.set_setting("network/config/min_latency", min_latency)
-
-	if ProjectSettings.has_setting("network/config/max_latency"):
-		max_latency = ProjectSettings.get_setting("network/config/max_latency")
-	else:
-		ProjectSettings.set_setting("network/config/max_latency", max_latency)
-
-	if ProjectSettings.has_setting("network/config/drop_rate"):
-		drop_rate = ProjectSettings.get_setting("network/config/drop_rate")
-	else:
-		ProjectSettings.set_setting("network/config/drop_rate", drop_rate)
-
-	if ProjectSettings.has_setting("network/config/dup_rate"):
-		dup_rate = ProjectSettings.get_setting("network/config/dup_rate")
-	else:
-		ProjectSettings.set_setting("network/config/dup_rate", dup_rate)
