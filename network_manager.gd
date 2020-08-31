@@ -213,7 +213,7 @@ func get_peer_count(p_inclusive: bool) -> int:
 	return peer_count
 
 
-func host_game(p_port: int, p_max_players: int, p_dedicated: bool, p_relay: bool = true) -> bool:
+func host_game(p_port: int, p_max_players: int, p_dedicated: bool, p_relay: bool = true, p_retry_max = 0) -> bool:
 	if has_active_peer():
 		NetworkLogger.error("Network peer already established!")
 		return false
@@ -236,11 +236,17 @@ func host_game(p_port: int, p_max_players: int, p_dedicated: bool, p_relay: bool
 	else:
 		NetworkLogger.printl("Attempting to host authoritative server...")
 
-	if net.create_server(active_port, max_players) != OK:
-		NetworkLogger.printl(
-			"Cannot create a server on port {port}!".format({"port": str(active_port)})
-		)
-		return false
+	var retry_count : int = 0
+	while net.create_server(active_port, max_players) != OK:
+		if (retry_count % 10) == 0:
+			NetworkLogger.printl(
+				"Cannot create a server on port {port}! (Try {try}/{trymax})".format(
+				{"port": str(active_port), "try": str(retry_count), "trymax": str(p_retry_max)})
+			)
+		retry_count += 1
+		if retry_count > p_retry_max:
+			return false
+		OS.delay_msec(100)
 
 	get_tree().multiplayer.set_network_peer(net)
 	get_tree().multiplayer.set_allow_object_decoding(false)
