@@ -86,6 +86,9 @@ func interpolate_transform(p_delta: float) -> void:
 					)
 				else:
 					current_rotation = target_rotation
+			else:
+				current_origin = target_origin
+				current_rotation = target_rotation
 
 			if entity_node.entity_parent_state == entity_node.ENTITY_PARENT_STATE_CHANGED:
 				entity_node.entity_parent_state = entity_node.ENTITY_PARENT_STATE_OK
