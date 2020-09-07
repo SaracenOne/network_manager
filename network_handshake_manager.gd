@@ -152,7 +152,7 @@ func decode_handshake_buffer(
 		network_constants_const.STATE_REQUEST_COMMAND:
 			pass
 		network_constants_const.READY_COMMAND:
-			NetworkManager.peer_data[p_packet_sender_id].validation_state = NetworkManager.VALIDATION_STATE_SYNCED
+			NetworkManager.peer_data[p_packet_sender_id].validation_state = NetworkManager.validation_state_enum.VALIDATION_STATE_SYNCED
 		network_constants_const.DISCONNECT_COMMAND:
 			if p_network_reader.is_eof():
 				NetworkLogger.error("decode_handshake_buffer: eof!")

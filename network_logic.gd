@@ -63,29 +63,39 @@ func on_serialize(p_writer: network_writer_const, p_initial_state: bool) -> netw
 func on_deserialize(p_reader: network_reader_const, p_initial_state: bool) -> network_reader_const:
 	if p_reader == null:
 		return p_reader
-
+		
 	for child in get_children():
 		p_reader = child.on_deserialize(p_reader, p_initial_state)
-
+		
 	return p_reader
 
 
 func _threaded_instance_setup(p_instance_id: int, p_network_reader: Reference) -> void:
 	._threaded_instance_setup(p_instance_id, p_network_reader)
-
+	
 	for child in get_children():
 		child._threaded_instance_setup(p_instance_id, p_network_reader)
 
 
-func _network_process(_delta: float) -> void:
+func _network_process(p_delta: float) -> void:
 	for child in get_children():
-		child._network_process(_delta)
+		child._network_process(p_delta)
 
 
-func _process(_delta: float) -> void:
+func _entity_process(p_delta: float) -> void:
 	if ! Engine.is_editor_hint():
-		_network_process(_delta)
+		_network_process(p_delta)
+
+ 
+func cache_nodes() -> void:
+	.cache_nodes()
+	
+	for child in get_children():
+		child.cache_nodes()
 
 
-func _ready() -> void:
+func _entity_ready() -> void:
 	cached_writer.resize(cached_writer_size)
+	
+	for child in get_children():
+		child._entity_ready()

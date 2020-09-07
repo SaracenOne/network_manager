@@ -57,11 +57,11 @@ func update_name() -> void:
 	# Make sure this entity is correctly named
 	if NetworkManager.is_server():
 		get_entity_node().set_name(
-			"NetEntity_{instance_id}".format({"instance_id": network_instance_id})
+			"NetEntity_{instance_id}".format({"instance_id": str(network_instance_id)})
 		)
 
 
-func _ready() -> void:
+func _entity_ready() -> void:
 	if ! Engine.is_editor_hint():
 		entity_node = get_entity_node()
 
@@ -70,13 +70,13 @@ func _ready() -> void:
 		else:
 			# This is a bad approach, we should be purging entities for the clients
 			# BEFORE they are instantiated, but this will do for now...
-			if ! get_entity_node().get_name().begins_with("NetEntity"):
-				get_entity_node().queue_free()
+			if ! entity_node.get_name().begins_with("NetEntity"):
+				entity_node.queue_free()
 				return
 
 		set_network_scene_id(
 			NetworkManager.network_replication_manager.get_network_scene_id_from_path(
-				get_entity_node().filename
+				entity_node.filename
 			)
 		)
 
@@ -86,7 +86,5 @@ func _ready() -> void:
 
 
 func _threaded_instance_setup(p_instance_id: int, p_network_reader: Reference) -> void:
-	cache_nodes()
-
 	set_network_instance_id(p_instance_id)
 	update_state(p_network_reader, true)

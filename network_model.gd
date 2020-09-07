@@ -23,7 +23,8 @@ func _network_process(_delta: float) -> void:
 	._network_process(_delta)
 
 
-func _ready():
+func _entity_ready() -> void:
+	._entity_ready()
 	if ! Engine.is_editor_hint():
 		if received_data:
 			pass

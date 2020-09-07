@@ -512,12 +512,12 @@ func decode_buffer(p_id: int, p_buffer: PoolByteArray) -> void:
 
 func _process(p_delta: float) -> void:
 	if ! Engine.is_editor_hint():
-		if is_server():
-			var peers: PoolIntArray = get_connected_peers()
-			for peer in peers:
-				peer_data[peer]["time_since_last_update_received"] += p_delta
-
 		if has_active_peer():
+			if is_server():
+				var peers: PoolIntArray = get_connected_peers()
+				for peer in peers:
+					peer_data[peer]["time_since_last_update_received"] += p_delta
+			
 			if (
 				is_server()
 				or (
@@ -529,7 +529,7 @@ func _process(p_delta: float) -> void:
 					"network_process", get_tree().multiplayer.get_network_unique_id(), p_delta
 				)
 
-		network_flow_manager.process_network_packets(p_delta)
+			network_flow_manager.process_network_packets(p_delta)
 
 
 func copy_valid_send_peers(p_id: int, p_include_dummy_peers: bool = false) -> Array:

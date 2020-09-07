@@ -50,7 +50,8 @@ func on_deserialize(p_reader: network_reader_const, p_initial_state: bool) -> ne
 	return p_reader
 
 
-func _ready():
+func _entity_ready() -> void:
+	._entity_ready()
 	if ! Engine.is_editor_hint():
 		if received_data:
 			pass
