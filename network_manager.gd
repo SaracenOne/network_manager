@@ -16,6 +16,11 @@ var multiplayer_signal_table: Array = [
 	{"signal": "network_peer_packet", "method": "_network_peer_packet"},
 ]
 
+var network_process_timestep: float = 0.0
+var network_process_frame_timeslice: float = 0.0
+
+var network_fps: int = 60
+var packets_received_this_frame: int = 0
 var is_relay: bool = false
 
 var kill_flag: bool = false
@@ -150,6 +155,8 @@ func get_entity_root_node() -> Node:
 
 #Client/Server
 func _network_peer_packet(p_id: int, p_packet: PoolByteArray) -> void:
+	packets_received_this_frame += 1
+	
 	# Reset the timer for this peer
 	peer_data[p_id]["time_since_last_update_received"] = 0.0
 	
@@ -512,24 +519,31 @@ func decode_buffer(p_id: int, p_buffer: PoolByteArray) -> void:
 
 func _process(p_delta: float) -> void:
 	if ! Engine.is_editor_hint():
-		if has_active_peer():
-			if is_server():
-				var peers: PoolIntArray = get_connected_peers()
-				for peer in peers:
-					peer_data[peer]["time_since_last_update_received"] += p_delta
+		packets_received_this_frame = 0
+		network_process_timestep += p_delta
+		
+		if network_process_timestep > network_process_frame_timeslice:
+			while network_process_timestep > network_process_frame_timeslice:
+				network_process_timestep -= network_process_frame_timeslice
 			
-			if (
-				is_server()
-				or (
-					client_state
-					== network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
-				)
-			):
-				emit_signal(
-					"network_process", get_tree().multiplayer.get_network_unique_id(), p_delta
-				)
-
-			network_flow_manager.process_network_packets(p_delta)
+			if has_active_peer():
+				if is_server():
+					var peers: PoolIntArray = get_connected_peers()
+					for peer in peers:
+						peer_data[peer]["time_since_last_update_received"] += p_delta
+				
+				if (
+					is_server()
+					or (
+						client_state
+						== network_constants_const.validation_state_enum.VALIDATION_STATE_SYNCED
+					)
+				):
+					emit_signal(
+						"network_process", get_tree().multiplayer.get_network_unique_id(), p_delta
+					)
+					
+				network_flow_manager.process_network_packets(p_delta)
 
 
 func copy_valid_send_peers(p_id: int, p_include_dummy_peers: bool = false) -> Array:
@@ -617,6 +631,12 @@ func unregister_peer(p_id) -> void:
 func setup_project_settings() -> void:
 	var should_save: bool = false
 	
+	if ProjectSettings.has_setting("network/config/network_fps"):
+		network_fps = ProjectSettings.get_setting("network/config/network_fps")
+	else:
+		ProjectSettings.set_setting("network/config/network_fps", network_fps)
+		should_save = true
+	
 	if ProjectSettings.has_setting("network/config/entity_root_node"):
 		entity_root_node_path = NodePath(
 			ProjectSettings.get_setting("network/config/entity_root_node")
@@ -661,6 +681,7 @@ func _ready() -> void:
 	setup_project_settings()
 
 	if ! Engine.is_editor_hint():
+		network_process_frame_timeslice = 1.0 / network_fps
 		for current_signal in multiplayer_signal_table:
 			if (
 				get_tree().multiplayer.connect(current_signal.signal, self, current_signal.method)
