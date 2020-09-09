@@ -22,7 +22,6 @@ func _add_entity_instance_unsafe(p_instance: Node, p_parent: Node = null) -> voi
 			NetworkLogger.error("Entity is already inside tree!")
 		else:
 			p_parent.add_child(p_instance)
-			p_parent.set_script(runtime_entity_const)
 
 
 # Deletes an entity to the tree. Called exclusively in the main thread
