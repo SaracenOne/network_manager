@@ -293,106 +293,105 @@ func _network_manager_flush() -> void:
 	flush()
 
 
-func _network_manager_process(p_id: int, p_delta: float) -> void:
-	if p_delta > 0.0:
-		if (
-			network_entities_pending_spawn.size() > 0
-			or network_entities_pending_destruction.size()
-			or network_entities_pending_request_transfer_master.size() > 0
-		):
-			# Debugging information
-			if network_entities_pending_spawn.size():
-				NetworkLogger.printl("Spawning entities = [")
+func _network_manager_process(p_id: int, _delta: float) -> void:
+	if (
+		network_entities_pending_spawn.size() > 0
+		or network_entities_pending_destruction.size()
+		or network_entities_pending_request_transfer_master.size() > 0
+	):
+		# Debugging information
+		if network_entities_pending_spawn.size():
+			NetworkLogger.printl("Spawning entities = [")
+			for entity in network_entities_pending_spawn:
+				if entity:
+					NetworkLogger.printl("{ %s }" % entity.get_name())
+			NetworkLogger.printl("]")
+
+		if network_entities_pending_destruction.size():
+			NetworkLogger.printl("Destroying entities = [")
+			for entity in network_entities_pending_destruction:
+				if entity:
+					NetworkLogger.printl("{ %s }" % entity.get_name())
+			NetworkLogger.printl("]")
+		# Debugging end
+
+		var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
+
+		for synced_peer in synced_peers:
+			var network_writer_state: network_writer_const = null
+			
+			var ignore_list: Array = []
+			if network_entity_ignore_table.has(synced_peer):
+				ignore_list = network_entity_ignore_table[synced_peer]
+
+			if synced_peer != -1:
+				network_writer_state = replication_writers[synced_peer]
+			else:
+				network_writer_state = dummy_replication_writer
+
+			network_writer_state.seek(0)
+
+			if p_id == NetworkManager.session_master:
+				# Spawn commands
 				for entity in network_entities_pending_spawn:
-					if entity:
-						NetworkLogger.printl("{ %s }" % entity.get_name())
-				NetworkLogger.printl("]")
+					# If this entity is in the ignore list, skip it
+					if ignore_list.has(entity):
+						continue
+					
+					var entity_command_network_writer: network_writer_const\
+					= create_entity_command(
+						network_constants_const.SPAWN_ENTITY_COMMAND, entity
+					)
+					network_writer_state.put_writer(
+						entity_command_network_writer,
+						entity_command_network_writer.get_position()
+					)
 
-			if network_entities_pending_destruction.size():
-				NetworkLogger.printl("Destroying entities = [")
+				# Destroy commands
 				for entity in network_entities_pending_destruction:
-					if entity:
-						NetworkLogger.printl("{ %s }" % entity.get_name())
-				NetworkLogger.printl("]")
-			# Debugging end
-
-			var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
-
-			for synced_peer in synced_peers:
-				var network_writer_state: network_writer_const = null
-				
-				var ignore_list: Array = []
-				if network_entity_ignore_table.has(synced_peer):
-					ignore_list = network_entity_ignore_table[synced_peer]
-
-				if synced_peer != -1:
-					network_writer_state = replication_writers[synced_peer]
-				else:
-					network_writer_state = dummy_replication_writer
-
-				network_writer_state.seek(0)
-
-				if p_id == NetworkManager.session_master:
-					# Spawn commands
-					for entity in network_entities_pending_spawn:
-						# If this entity is in the ignore list, skip it
-						if ignore_list.has(entity):
-							continue
-						
-						var entity_command_network_writer: network_writer_const\
-						= create_entity_command(
-							network_constants_const.SPAWN_ENTITY_COMMAND, entity
-						)
-						network_writer_state.put_writer(
-							entity_command_network_writer,
-							entity_command_network_writer.get_position()
-						)
-
-					# Destroy commands
-					for entity in network_entities_pending_destruction:
-						var entity_command_network_writer: network_writer_const\
-						= create_entity_command(
-							network_constants_const.DESTROY_ENTITY_COMMAND, entity
-						)
-						network_writer_state.put_writer(
-							entity_command_network_writer,
-							entity_command_network_writer.get_position()
-						)
-
-					# Transfer master commands
-					for entity in network_entities_pending_request_transfer_master:
-						var entity_command_network_writer: network_writer_const\
-						= create_entity_command(
-							network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND, entity
-						)
-						network_writer_state.put_writer(
-							entity_command_network_writer,
-							entity_command_network_writer.get_position()
-						)
-				else:
-					# Request master commands
-					for entity in network_entities_pending_request_transfer_master:
-						var entity_command_network_writer: network_writer_const =\
-						create_entity_command(
-							network_constants_const.REQUEST_ENTITY_MASTER_COMMAND, entity
-						)
-						network_writer_state.put_writer(
-							entity_command_network_writer,
-							entity_command_network_writer.get_position()
-						)
-
-				if network_writer_state.get_position() > 0:
-					var raw_data: PoolByteArray = network_writer_state.get_raw_data(
-						network_writer_state.get_position()
+					var entity_command_network_writer: network_writer_const\
+					= create_entity_command(
+						network_constants_const.DESTROY_ENTITY_COMMAND, entity
 					)
-					NetworkManager.network_flow_manager.queue_packet_for_send(
-						ref_pool_const.new(raw_data),
-						synced_peer,
-						NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE
+					network_writer_state.put_writer(
+						entity_command_network_writer,
+						entity_command_network_writer.get_position()
 					)
 
-			# Flush the pending spawn, parenting, and destruction queues
-			flush()
+				# Transfer master commands
+				for entity in network_entities_pending_request_transfer_master:
+					var entity_command_network_writer: network_writer_const\
+					= create_entity_command(
+						network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND, entity
+					)
+					network_writer_state.put_writer(
+						entity_command_network_writer,
+						entity_command_network_writer.get_position()
+					)
+			else:
+				# Request master commands
+				for entity in network_entities_pending_request_transfer_master:
+					var entity_command_network_writer: network_writer_const =\
+					create_entity_command(
+						network_constants_const.REQUEST_ENTITY_MASTER_COMMAND, entity
+					)
+					network_writer_state.put_writer(
+						entity_command_network_writer,
+						entity_command_network_writer.get_position()
+					)
+
+			if network_writer_state.get_position() > 0:
+				var raw_data: PoolByteArray = network_writer_state.get_raw_data(
+					network_writer_state.get_position()
+				)
+				NetworkManager.network_flow_manager.queue_packet_for_send(
+					ref_pool_const.new(raw_data),
+					synced_peer,
+					NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE
+				)
+
+		# Flush the pending spawn, parenting, and destruction queues
+		flush()
 
 
 """

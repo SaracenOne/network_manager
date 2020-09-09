@@ -140,58 +140,57 @@ func decode_voice_command(p_packet_sender_id: int, p_network_reader: network_rea
 	return p_network_reader
 
 
-func _network_manager_process(p_id: int, p_delta: float) -> void:
-	if p_delta > 0.0:
-		var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
+func _network_manager_process(p_id: int, _delta: float) -> void:
+	var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
 
-		if get_voice_buffers.is_valid() and get_sequence_id.is_valid():
-			
-			var sequence_id: int = get_sequence_id.call_func()
-			var voice_buffers: Array = get_voice_buffers.call_func()
-			
-			for voice_buffer in voice_buffers:
-				# If muted or gated, give it an empty array
-				if ! should_send_audio.is_valid():
+	if get_voice_buffers.is_valid() and get_sequence_id.is_valid():
+		
+		var sequence_id: int = get_sequence_id.call_func()
+		var voice_buffers: Array = get_voice_buffers.call_func()
+		
+		for voice_buffer in voice_buffers:
+			# If muted or gated, give it an empty array
+			if ! should_send_audio.is_valid():
+				voice_buffer = {"byte_array": PoolByteArray(), "buffer_size": 0}
+			else:
+				if ! should_send_audio.call_func():
 					voice_buffer = {"byte_array": PoolByteArray(), "buffer_size": 0}
+
+			for synced_peer in synced_peers:
+				var network_writer_state: network_writer_const = null
+
+				if synced_peer != -1:
+					network_writer_state = voice_writers[synced_peer]
 				else:
-					if ! should_send_audio.call_func():
-						voice_buffer = {"byte_array": PoolByteArray(), "buffer_size": 0}
+					network_writer_state = dummy_voice_writer
 
-				for synced_peer in synced_peers:
-					var network_writer_state: network_writer_const = null
+				network_writer_state.seek(0)
 
-					if synced_peer != -1:
-						network_writer_state = voice_writers[synced_peer]
-					else:
-						network_writer_state = dummy_voice_writer
-
-					network_writer_state.seek(0)
-
-					# Voice commands
-					network_writer_state = encode_voice_buffer(
-						p_id,
-						network_writer_state,
-						sequence_id,
-						voice_buffer,
-						(
-							! NetworkManager.is_relay()
-							and (
-								synced_peer
-								!= NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID
-							)
+				# Voice commands
+				network_writer_state = encode_voice_buffer(
+					p_id,
+					network_writer_state,
+					sequence_id,
+					voice_buffer,
+					(
+						! NetworkManager.is_relay()
+						and (
+							synced_peer
+							!= NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID
 						)
 					)
+				)
 
-					if network_writer_state.get_position() > 0:
-						var raw_data: PoolByteArray = network_writer_state.get_raw_data(
-							network_writer_state.get_position()
-						)
-						NetworkManager.network_flow_manager.queue_packet_for_send(
-							ref_pool_const.new(raw_data),
-							synced_peer,
-							NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE
-						)
-				sequence_id += 1
+				if network_writer_state.get_position() > 0:
+					var raw_data: PoolByteArray = network_writer_state.get_raw_data(
+						network_writer_state.get_position()
+					)
+					NetworkManager.network_flow_manager.queue_packet_for_send(
+						ref_pool_const.new(raw_data),
+						synced_peer,
+						NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE
+					)
+			sequence_id += 1
 				
 
 func encode_voice_buffer(

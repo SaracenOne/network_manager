@@ -125,19 +125,18 @@ func scrape_and_send_state_data(p_id: int, p_synced_peer: int, p_entities: Array
 		)
 
 
-func _network_manager_process(p_id: int, p_delta: float) -> void:
-	if p_delta > 0.0:
-		time_passed += p_delta
-		if time_passed > time_until_next_send:
-			var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
-			var entities: Array = get_tree().get_nodes_in_group("NetworkedEntities")
+func _network_manager_process(p_id: int, _delta: float) -> void:
+	time_passed += _delta
+	if time_passed > time_until_next_send:
+		var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
+		var entities: Array = get_tree().get_nodes_in_group("NetworkedEntities")
 
-			for synced_peer in synced_peers:
-				scrape_and_send_state_data(p_id, synced_peer, entities)
-			if NetworkManager.is_server():
-				time_until_next_send = time_passed + SERVER_PACKET_SEND_RATE
-			else:
-				time_until_next_send = time_passed + CLIENT_PACKET_SEND_RATE
+		for synced_peer in synced_peers:
+			scrape_and_send_state_data(p_id, synced_peer, entities)
+		if NetworkManager.is_server():
+			time_until_next_send = time_passed + SERVER_PACKET_SEND_RATE
+		else:
+			time_until_next_send = time_passed + CLIENT_PACKET_SEND_RATE
 
 
 """

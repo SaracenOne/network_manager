@@ -109,87 +109,86 @@ func _network_manager_flush() -> void:
 	flush()
 
 
-func _network_manager_process(p_id: int, p_delta: float) -> void:
-	if p_delta > 0.0:
-		if (
-			pending_rpc_reliable_calls.size() > 0
-			or pending_rpc_unreliable_calls.size() > 0
-			or pending_rset_reliable_calls.size() > 0
-			or pending_rset_unreliable_calls.size() > 0
-		):
-			# Debugging information
-			# Debugging end
+func _network_manager_process(p_id: int, _delta: float) -> void:
+	if (
+		pending_rpc_reliable_calls.size() > 0
+		or pending_rpc_unreliable_calls.size() > 0
+		or pending_rset_reliable_calls.size() > 0
+		or pending_rset_unreliable_calls.size() > 0
+	):
+		# Debugging information
+		# Debugging end
 
-			var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
+		var synced_peers: Array = NetworkManager.copy_valid_send_peers(p_id, false)
 
-			for synced_peer in synced_peers:
-				var network_reliable_writer_state: network_writer_const = null
-				var network_unreliable_writer_state: network_writer_const = null
+		for synced_peer in synced_peers:
+			var network_reliable_writer_state: network_writer_const = null
+			var network_unreliable_writer_state: network_writer_const = null
 
-				if synced_peer != -1:
-					network_reliable_writer_state = rpc_reliable_writers[synced_peer]
-					network_unreliable_writer_state = rpc_unreliable_writers[synced_peer]
-				else:
-					network_reliable_writer_state = dummy_rpc_reliable_writer
-					network_unreliable_writer_state = dummy_rpc_unreliable_writer
+			if synced_peer != -1:
+				network_reliable_writer_state = rpc_reliable_writers[synced_peer]
+				network_unreliable_writer_state = rpc_unreliable_writers[synced_peer]
+			else:
+				network_reliable_writer_state = dummy_rpc_reliable_writer
+				network_unreliable_writer_state = dummy_rpc_unreliable_writer
 
-				network_reliable_writer_state.seek(0)
-				network_unreliable_writer_state.seek(0)
+			network_reliable_writer_state.seek(0)
+			network_unreliable_writer_state.seek(0)
 
-				for call in pending_rpc_reliable_calls:
-					var rpc_command_network_writer: network_writer_const = create_rpc_command(
-						network_constants_const.ENTITY_RPC_COMMAND, call
-					)
-					network_reliable_writer_state.put_writer(
-						rpc_command_network_writer, rpc_command_network_writer.get_position()
-					)
+			for call in pending_rpc_reliable_calls:
+				var rpc_command_network_writer: network_writer_const = create_rpc_command(
+					network_constants_const.ENTITY_RPC_COMMAND, call
+				)
+				network_reliable_writer_state.put_writer(
+					rpc_command_network_writer, rpc_command_network_writer.get_position()
+				)
 
-				for call in pending_rset_reliable_calls:
-					var rset_command_network_writer: network_writer_const = create_rpc_command(
-						network_constants_const.ENTITY_RSET_COMMAND, call
-					)
-					network_reliable_writer_state.put_writer(
-						rset_command_network_writer, rset_command_network_writer.get_position()
-					)
+			for call in pending_rset_reliable_calls:
+				var rset_command_network_writer: network_writer_const = create_rpc_command(
+					network_constants_const.ENTITY_RSET_COMMAND, call
+				)
+				network_reliable_writer_state.put_writer(
+					rset_command_network_writer, rset_command_network_writer.get_position()
+				)
 
-				for call in pending_rpc_unreliable_calls:
-					var rpc_command_network_writer: network_writer_const = create_rpc_command(
-						network_constants_const.ENTITY_RPC_COMMAND, call
-					)
-					network_reliable_writer_state.put_writer(
-						rpc_command_network_writer, rpc_command_network_writer.get_position()
-					)
+			for call in pending_rpc_unreliable_calls:
+				var rpc_command_network_writer: network_writer_const = create_rpc_command(
+					network_constants_const.ENTITY_RPC_COMMAND, call
+				)
+				network_reliable_writer_state.put_writer(
+					rpc_command_network_writer, rpc_command_network_writer.get_position()
+				)
 
-				for call in pending_rset_unreliable_calls:
-					var rset_command_network_writer: network_writer_const = create_rpc_command(
-						network_constants_const.ENTITY_RSET_COMMAND, call
-					)
-					network_reliable_writer_state.put_writer(
-						rset_command_network_writer, rset_command_network_writer.get_position()
-					)
+			for call in pending_rset_unreliable_calls:
+				var rset_command_network_writer: network_writer_const = create_rpc_command(
+					network_constants_const.ENTITY_RSET_COMMAND, call
+				)
+				network_reliable_writer_state.put_writer(
+					rset_command_network_writer, rset_command_network_writer.get_position()
+				)
 
-				if network_reliable_writer_state.get_position() > 0:
-					var raw_data: PoolByteArray = network_reliable_writer_state.get_raw_data(
-						network_reliable_writer_state.get_position()
-					)
-					NetworkManager.network_flow_manager.queue_packet_for_send(
-						ref_pool_const.new(raw_data),
-						synced_peer,
-						NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE
-					)
+			if network_reliable_writer_state.get_position() > 0:
+				var raw_data: PoolByteArray = network_reliable_writer_state.get_raw_data(
+					network_reliable_writer_state.get_position()
+				)
+				NetworkManager.network_flow_manager.queue_packet_for_send(
+					ref_pool_const.new(raw_data),
+					synced_peer,
+					NetworkedMultiplayerPeer.TRANSFER_MODE_RELIABLE
+				)
 
-				if network_unreliable_writer_state.get_position() > 0:
-					var raw_data: PoolByteArray = network_unreliable_writer_state.get_raw_data(
-						network_unreliable_writer_state.get_position()
-					)
-					NetworkManager.network_flow_manager.queue_packet_for_send(
-						ref_pool_const.new(raw_data),
-						synced_peer,
-						NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE
-					)
+			if network_unreliable_writer_state.get_position() > 0:
+				var raw_data: PoolByteArray = network_unreliable_writer_state.get_raw_data(
+					network_unreliable_writer_state.get_position()
+				)
+				NetworkManager.network_flow_manager.queue_packet_for_send(
+					ref_pool_const.new(raw_data),
+					synced_peer,
+					NetworkedMultiplayerPeer.TRANSFER_MODE_UNRELIABLE
+				)
 
-			# Flush the pending spawn, parenting, and destruction queues
-			flush()
+		# Flush the pending spawn, parenting, and destruction queues
+		flush()
 
 
 func decode_entity_rpc_command(p_packet_sender_id: int, p_network_reader: network_reader_const) -> network_reader_const:
