@@ -220,7 +220,7 @@ func get_peer_count(p_inclusive: bool) -> int:
 	return peer_count
 
 
-func host_game(p_port: int, p_max_players: int, p_dedicated: bool, p_relay: bool = true, p_retry_max = 0) -> bool:
+func host_game(p_port: int, p_max_players: int, p_dedicated: bool, p_relay: bool = true, p_retry_max: int = 0) -> bool:
 	if has_active_peer():
 		NetworkLogger.error("Network peer already established!")
 		return false
