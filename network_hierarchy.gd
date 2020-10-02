@@ -1,5 +1,6 @@
 extends NetworkLogic
 class_name NetworkHierarchy
+tool
 
 const network_entity_manager_const = preload("res://addons/network_manager/network_entity_manager.gd")
 

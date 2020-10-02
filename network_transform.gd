@@ -1,5 +1,6 @@
 extends NetworkLogic
 class_name NetworkTransform
+tool
 
 const math_funcs_const = preload("res://addons/math_util/math_funcs.gd")
 
