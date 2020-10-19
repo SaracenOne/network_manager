@@ -94,8 +94,8 @@ func process_parenting():
 	received_data = false
 
 
-func _network_process(_delta: float) -> void:
-	._network_process(_delta)
+func _network_representation_process(_delta: float) -> void:
+	._network_representation_process(_delta)
 	if received_data:
 		process_parenting()
 

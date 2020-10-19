@@ -97,8 +97,8 @@ func interpolate_transform(p_delta: float) -> void:
 			call_deferred("update_transform", Transform(Basis(current_rotation), current_origin))
 
 
-func _network_process(_delta: float) -> void:
-	._network_process(_delta)
+func _network_representation_process(_delta: float) -> void:
+	._network_representation_process(_delta)
 	if received_data:
 		interpolate_transform(_delta)
 

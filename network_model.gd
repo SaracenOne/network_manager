@@ -19,8 +19,8 @@ func on_deserialize(p_reader: network_reader_const, p_initial_state: bool) -> ne
 	return p_reader
 
 
-func _network_process(_delta: float) -> void:
-	._network_process(_delta)
+func _network_representation_process(_delta: float) -> void:
+	._network_representation_process(_delta)
 
 
 func _entity_ready() -> void:
