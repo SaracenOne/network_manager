@@ -32,6 +32,7 @@ const network_voice_manager_const = preload("network_voice_manager.gd")
 const network_entity_manager_const = preload("network_entity_manager.gd")
 const network_flow_manager_const = preload("network_flow_manager.gd")
 const network_handshake_manager_const = preload("network_handshake_manager.gd")
+const network_rpc_manager_const = preload("network_rpc_manager.gd")
 
 var server_state_ready: bool = false
 
@@ -41,6 +42,7 @@ var network_voice_manager: Node = null
 var network_entity_manager: Node = null
 var network_flow_manager: Node = null
 var network_handshake_manager: Node = null
+var network_rpc_manager: Node = null
 
 var compression_mode: int = NetworkedMultiplayerENet.COMPRESS_NONE
 
@@ -482,6 +484,10 @@ func decode_buffer(p_id: int, p_buffer: PoolByteArray) -> void:
 			network_reader = network_handshake_manager.decode_handshake_buffer(
 				p_id, network_reader, command
 			)
+		elif network_rpc_manager.is_command_valid(command):
+			network_reader = network_rpc_manager.decode_remote_buffer(
+				p_id, network_reader, command
+			)
 		else:
 			ErrorManager.error("Invalid command: {command}".format({"command": str(command)}))
 
@@ -584,7 +590,7 @@ func get_network_scene_paths() -> Array:
 func client_request_server_info(p_client_info: Dictionary) -> void:
 	emit_signal("requesting_server_info")
 	network_handshake_manager.rpc_id(
-		NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID,
+		network_constants_const.SERVER_MASTER_PEER_ID,
 		"requested_server_info",
 		p_client_info
 	)
@@ -593,7 +599,7 @@ func client_request_server_info(p_client_info: Dictionary) -> void:
 func client_request_server_state(p_client_state: Dictionary) -> void:
 	emit_signal("requesting_server_state")
 	network_handshake_manager.rpc_id(
-		NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID, "requested_server_state", {}
+		network_constants_const.SERVER_MASTER_PEER_ID, "requested_server_state", {}
 	)
 
 
@@ -702,6 +708,7 @@ func _enter_tree() -> void:
 	add_child(network_entity_manager)
 	add_child(network_flow_manager)
 	add_child(network_handshake_manager)
+	add_child(network_rpc_manager)
 
 
 func _init() -> void:
@@ -728,3 +735,7 @@ func _init() -> void:
 	network_handshake_manager = Node.new()
 	network_handshake_manager.set_script(network_handshake_manager_const)
 	network_handshake_manager.set_name("NetworkHandshakeManager")
+	
+	network_rpc_manager = Node.new()
+	network_rpc_manager.set_script(network_rpc_manager_const)
+	network_rpc_manager.set_name("NetworkRPCManager")

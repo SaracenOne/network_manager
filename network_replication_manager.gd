@@ -153,6 +153,11 @@ func write_entity_spawn_command(p_entity: entity_const, p_network_writer: networ
 	)
 
 	var entity_state: network_writer_const = p_entity.network_identity_node.get_state(null, true)
+	
+	var entity_state_size = entity_state.get_position()
+	if entity_state_size >= 0xffff:
+		NetworkLogger.error("State data exceeds 16 bits!")
+	
 	p_network_writer.put_writer(entity_state, entity_state.get_position())
 
 	return p_network_writer

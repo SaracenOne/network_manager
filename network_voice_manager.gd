@@ -111,6 +111,7 @@ func decode_voice_command(p_packet_sender_id: int, p_network_reader: network_rea
 				else:
 					network_writer_state = dummy_voice_writer
 
+				# Could seeking here cause an issue?
 				network_writer_state.seek(0)
 
 				var encoded_voice: Dictionary = Dictionary()
