@@ -4,7 +4,7 @@ class_name NetworkRPCTable
 var virtual_rpc_method_table: Dictionary = {}
 var virtual_rpc_property_table: Dictionary = {}
 
-var sender_id: int = get_tree().multiplayer.get_network_unique_id()
+var sender_id: int = -1
 
 func get_rpc_sender_id() -> int:
 	return sender_id
@@ -171,6 +171,10 @@ func sanitise_rpc() -> void:
 		if rpc_mode != MultiplayerAPI.RPC_MODE_DISABLED:
 			virtual_rpc_property_table[property.name] = {"rpc_mode": rpc_mode}
 			rset_config(property.name, MultiplayerAPI.RPC_MODE_DISABLED)
+
+
+func _ready():
+	sender_id = get_tree().multiplayer.get_network_unique_id()
 
 
 func _init():
