@@ -184,6 +184,10 @@ func is_session_master() -> bool:
 		return is_server()
 	else:
 		return session_master == get_current_peer_id()
+		
+		
+func get_session_master_id() -> int:
+	return session_master
 
 
 func request_network_kill() -> void:
