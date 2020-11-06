@@ -3,6 +3,13 @@ tool
 
 const entity_const = preload("res://addons/entity_manager/entity.gd")
 
+const NETWORK_MAJOR_VERSION = 0
+const NETWORK_MINOR_VERSION = 1
+const NETWORK_PROTOCOL_NAME = "sar1"
+
+static func get_network_version_string() -> String:
+	return "%s_v%s.%s" % [NETWORK_PROTOCOL_NAME, str(NETWORK_MAJOR_VERSION), str(NETWORK_MINOR_VERSION)]
+
 const network_writer_const = preload("network_writer.gd")
 const network_reader_const = preload("network_reader.gd")
 const network_constants_const = preload("network_constants.gd")
@@ -583,7 +590,7 @@ func get_default_server_info() -> Dictionary:
 		server_type = network_constants_const.AUTHORITATIVE_SERVER_NAME
 
 	return {
-		"server_type": server_type,
+		"server_type": server_type
 	}
 
 
