@@ -56,7 +56,8 @@ func on_deserialize(p_reader: network_reader_const, p_initial_state: bool) -> ne
 		var current_transform: Transform = Transform(Basis(rotation), origin)
 		current_origin = current_transform.origin
 		current_rotation = current_transform.basis.get_rotation_quat()
-
+		update_transform(Transform(current_rotation, current_origin))
+		
 	return p_reader
 
 

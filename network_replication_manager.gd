@@ -102,38 +102,6 @@ func get_entity_root_node() -> Node:
 	return NetworkManager.get_entity_root_node()
 
 
-func create_entity_instance(
-	p_packed_scene: PackedScene,
-	p_name: String = "NetEntity",
-	p_master_id: int = NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID
-) -> Node:
-	print_debug(
-		"Creating entity instance {name} of type {type}".format(
-			{"name": p_name, "type": p_packed_scene.resource_path}
-		)
-	)
-	var instance: Node = p_packed_scene.instance()
-	instance.set_name(p_name)
-	instance.set_network_master(p_master_id)
-
-	return instance
-
-
-func instantiate_entity(
-	p_packed_scene: PackedScene,
-	p_name: String = "NetEntity",
-	p_master_id: int = NetworkManager.network_constants_const.SERVER_MASTER_PEER_ID
-) -> Node:
-	var instance: Node = create_entity_instance(p_packed_scene, p_name, p_master_id)
-	NetworkManager.network_entity_manager.scene_tree_execution_command(
-		NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY,
-		instance,
-		null
-	)
-
-	return instance
-
-
 """ Network ids end """
 
 """
@@ -244,9 +212,7 @@ func get_network_scene_id_from_path(p_path: String) -> int:
 
 
 func create_spawn_state_for_new_client(p_network_id: int) -> void:
-	NetworkManager.network_entity_manager.scene_tree_execution_table.call(
-		"_execute_scene_tree_execution_table_unsafe"
-	)
+	EntityManager.scene_tree_execution_table._execute_scene_tree_execution_table_unsafe()
 
 	var ignore_list: Array = []
 
@@ -500,8 +466,8 @@ func decode_entity_spawn_command(p_packet_sender_id: int, p_network_reader: netw
 
 	entity_instance._threaded_instance_post_setup()
 
-	NetworkManager.network_entity_manager.scene_tree_execution_command(
-		NetworkManager.network_entity_manager.scene_tree_execution_table_const.ADD_ENTITY,
+	EntityManager.scene_tree_execution_command(
+		EntityManager.scene_tree_execution_table_const.ADD_ENTITY,
 		entity_instance,
 		null
 	)
@@ -537,8 +503,8 @@ func decode_entity_destroy_command(p_packet_sender_id: int, p_network_reader: ne
 
 	if network_entity_manager.network_instance_ids.has(instance_id):
 		var entity_instance: Node = network_entity_manager.network_instance_ids[instance_id].get_entity_node()
-		NetworkManager.network_entity_manager.scene_tree_execution_command(
-			NetworkManager.network_entity_manager.scene_tree_execution_table_const.REMOVE_ENTITY,
+		EntityManager.scene_tree_execution_command(
+			EntityManager.scene_tree_execution_table_const.REMOVE_ENTITY,
 			entity_instance,
 			null
 		)

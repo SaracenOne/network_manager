@@ -14,28 +14,6 @@ var networked_scenes: Array = []
 var max_networked_entities: int = 4096  # Default
 
 
-# Returns the root node all network entities should parented to
-func get_entity_root_node() -> Node:
-	return NetworkManager.get_entity_root_node()
-
-
-const scene_tree_execution_table_const = preload("scene_tree_execution_table.gd")
-var scene_tree_execution_table: Reference = scene_tree_execution_table_const.new()
-
-
-# Dispatches a deferred add/remove entity command to the scene tree execution table 
-func scene_tree_execution_command(p_command: int, p_entity_instance: Node, p_parent_instance: Node):
-	var parent_instance: Node = null
-	if p_parent_instance == null:
-		parent_instance = get_entity_root_node()
-	else:
-		parent_instance = p_parent_instance
-
-	scene_tree_execution_table.scene_tree_execution_command(
-		p_command, p_entity_instance, parent_instance
-	)
-
-
 ###############
 # Network ids #
 ###############

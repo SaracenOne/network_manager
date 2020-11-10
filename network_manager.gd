@@ -516,7 +516,7 @@ func decode_buffer(p_id: int, p_buffer: PoolByteArray) -> void:
 			else:
 				NetworkLogger.printl("Processed NULL")
 
-	network_entity_manager.scene_tree_execution_table.call_deferred(
+	EntityManager.scene_tree_execution_table.call_deferred(
 		"_execute_scene_tree_execution_table_unsafe"
 	)
 
@@ -620,6 +620,7 @@ func server_send_server_info(p_network_id: int, p_server_info: Dictionary) -> vo
 
 func server_send_server_state(p_network_id: int, p_server_state: Dictionary) -> void:
 	network_handshake_manager.rpc_id(p_network_id, "received_server_state", p_server_state)
+
 
 func server_send_client_info(p_network_id: int, p_client_id: int, p_client_info: Dictionary) -> void:
 	network_handshake_manager.rpc_id(p_network_id, "received_client_info", p_client_id, p_client_info)
