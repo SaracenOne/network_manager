@@ -274,14 +274,14 @@ func _network_manager_process(p_id: int, _delta: float) -> void:
 		if network_entities_pending_spawn.size():
 			NetworkLogger.printl("Spawning entities = [")
 			for entity in network_entities_pending_spawn:
-				if entity:
+				if is_instance_valid(entity):
 					NetworkLogger.printl("{ %s }" % entity.get_name())
 			NetworkLogger.printl("]")
 
 		if network_entities_pending_destruction.size():
 			NetworkLogger.printl("Destroying entities = [")
 			for entity in network_entities_pending_destruction:
-				if entity:
+				if is_instance_valid(entity):
 					NetworkLogger.printl("{ %s }" % entity.get_name())
 			NetworkLogger.printl("]")
 		# Debugging end
