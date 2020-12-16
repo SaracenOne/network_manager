@@ -77,15 +77,15 @@ func _threaded_instance_setup(p_instance_id: int, p_network_reader: Reference) -
 	for child in get_children():
 		child._threaded_instance_setup(p_instance_id, p_network_reader)
 
-
-func _network_representation_process(p_delta: float) -> void:
-	for child in get_children():
-		child._network_representation_process(p_delta)
-
+func _entity_physics_process(p_delta: float) -> void:
+	if ! Engine.is_editor_hint():
+		for child in get_children():
+			child._entity_physics_process(p_delta)
 
 func _entity_representation_process(p_delta: float) -> void:
 	if ! Engine.is_editor_hint():
-		_network_representation_process(p_delta)
+		for child in get_children():
+			child._entity_representation_process(p_delta)
 
  
 func cache_nodes() -> void:
@@ -97,3 +97,8 @@ func _entity_ready() -> void:
 	
 	for child in get_children():
 		child._entity_ready()
+		
+func _entity_about_to_add() -> void:
+	if ! Engine.is_editor_hint():
+		for child in get_children():
+			child._entity_about_to_add()

@@ -165,22 +165,25 @@ func write_entity_transfer_master_command(
 func create_entity_command(p_command: int, p_entity: entity_const) -> network_writer_const:
 	var network_writer: network_writer_const = NetworkManager.network_entity_command_writer_cache
 	network_writer.seek(0)
-
-	match p_command:
-		network_constants_const.SPAWN_ENTITY_COMMAND:
-			network_writer.put_u8(network_constants_const.SPAWN_ENTITY_COMMAND)
-			network_writer = write_entity_spawn_command(p_entity, network_writer)
-		network_constants_const.DESTROY_ENTITY_COMMAND:
-			network_writer.put_u8(network_constants_const.DESTROY_ENTITY_COMMAND)
-			network_writer = write_entity_destroy_command(p_entity, network_writer)
-		network_constants_const.REQUEST_ENTITY_MASTER_COMMAND:
-			network_writer.put_u8(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND)
-			network_writer = write_entity_request_master_command(p_entity, network_writer)
-		network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
-			network_writer.put_u8(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND)
-			network_writer = write_entity_transfer_master_command(p_entity, network_writer)
-		_:
-			NetworkLogger.error("Unknown entity message")
+	
+	if p_entity:
+		match p_command:
+			network_constants_const.SPAWN_ENTITY_COMMAND:
+				network_writer.put_u8(network_constants_const.SPAWN_ENTITY_COMMAND)
+				network_writer = write_entity_spawn_command(p_entity, network_writer)
+			network_constants_const.DESTROY_ENTITY_COMMAND:
+				network_writer.put_u8(network_constants_const.DESTROY_ENTITY_COMMAND)
+				network_writer = write_entity_destroy_command(p_entity, network_writer)
+			network_constants_const.REQUEST_ENTITY_MASTER_COMMAND:
+				network_writer.put_u8(network_constants_const.REQUEST_ENTITY_MASTER_COMMAND)
+				network_writer = write_entity_request_master_command(p_entity, network_writer)
+			network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND:
+				network_writer.put_u8(network_constants_const.TRANSFER_ENTITY_MASTER_COMMAND)
+				network_writer = write_entity_transfer_master_command(p_entity, network_writer)
+			_:
+				NetworkLogger.error("Unknown entity message")
+	else:
+		printerr("Tried to create entity command for null entity")
 
 	return network_writer
 
@@ -464,12 +467,10 @@ func decode_entity_spawn_command(p_packet_sender_id: int, p_network_reader: netw
 	)
 	entity_instance.set_network_master(network_master)
 
-	entity_instance._threaded_instance_post_setup()
-
 	EntityManager.scene_tree_execution_command(
 		EntityManager.scene_tree_execution_table_const.ADD_ENTITY,
 		entity_instance,
-		null
+		entity_instance.cached_entity_parent
 	)
 
 	return p_network_reader

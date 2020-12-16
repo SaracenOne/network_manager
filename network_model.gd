@@ -19,10 +19,6 @@ func on_deserialize(p_reader: network_reader_const, p_initial_state: bool) -> ne
 	return p_reader
 
 
-func _network_representation_process(_delta: float) -> void:
-	._network_representation_process(_delta)
-
-
 func _entity_ready() -> void:
 	._entity_ready()
 	if ! Engine.is_editor_hint():
