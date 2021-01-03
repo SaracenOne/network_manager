@@ -325,6 +325,7 @@ func reset_session_data() -> void:
 		emit_signal("peer_unregistered", peer_id)
 	active_peers = []
 	session_master = -1
+	server_dedicated = false
 
 	network_flow_manager.reset()
 
